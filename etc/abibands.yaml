@@ -1,0 +1,235 @@
+sensor_name: visir/abi
+
+composites:
+  green_crefl:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: toa_bidirectional_reflectance
+
+  green_raw:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: toa_bidirectional_reflectance
+
+  green:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: toa_bidirectional_reflectance
+
+  green_nocorr:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: toa_reflectance
+
+  true_color_crefl:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: true_color
+
+  true_color_raw:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: true_color
+
+  true_color:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: true_color
+
+  true_color_nocorr:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: true_color
+
+  natural_color:
+    bands: ['C02', 'C03', 'C05']
+    standard_name: natural_color
+
+  natural_color_nocorr:
+    bands: ['C02', 'C03', 'C05']
+    standard_name: natural_color
+
+  natural_color_raw:
+    bands: ['C02', 'C03', 'C05']
+    standard_name: natural_color
+
+  overview:
+    bands: ['C02', 'C03', 'C14']
+    standard_name: overview
+
+  overview_raw:
+    bands: ['C02', 'C03', 'C14']
+    standard_name: overview
+
+  colorized_ir_clouds:
+    bands: ['C13']
+    standard_name: colorized_ir_clouds
+
+  airmass:
+    bands: ['C08', 'C10', 'C12', 'C13']
+    standard_name: airmass
+
+  # CIMSS True Color Composites
+  cimss_green_sunz_rayleigh:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: toa_bidirectional_reflectance
+
+  cimss_green_sunz:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: toa_bidirectional_reflectance
+
+  cimss_green:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: toa_bidirectional_reflectance
+
+  cimss_true_color_sunz_rayleigh:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: cimss_true_color
+
+  cimss_true_color_sunz:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: cimss_true_color
+
+  cimss_true_color:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: cimss_true_color
+
+  true_color_with_night_fires_nocorr:
+    bands: ['C01', 'C02', 'C03', 'C05', 'C06', 'C07']
+    standard_name: true_color_with_night_fires
+
+  true_color_with_night_fires:
+    bands: ['C01', 'C02', 'C03', 'C05', 'C06', 'C07']
+    standard_name: true_color_with_night_fires
+
+  true_color_with_night_ir:
+    bands: ['C01', 'C02', 'C03', 'C07', 'C10', 'C11', 'C12', 'C13', 'C14', 'C15']
+    standard_name: true_color_with_night_ir
+  
+  true_color_with_night_ir_custom:
+    bands: ['C01', 'C02', 'C03', 'C07', 'C10', 'C11', 'C12', 'C13', 'C14', 'C15']
+    standard_name: true_color_with_night_ir_custom
+
+  natural_color_raw_with_night_ir:
+    bands: ['C01', 'C02', 'C03', 'C07', 'C10', 'C11', 'C12', 'C13', 'C14', 'C15']
+    standard_name: natural_color_with_night_ir
+
+  true_color_with_night_ir_hires:
+    bands: ['C01', 'C02', 'C03', 'C07', 'C10', 'C11', 'C12', 'C13', 'C14', 'C15']
+    standard_name: true_color_with_night_ir_hires
+
+  night_ir_alpha:
+    bands: ['C07', 'C08', 'C09', 'C10', 'C11', 'C12', 'C13', 'C14', 'C15']
+    standard_name: night_ir_alpha
+
+  night_ir_with_background:
+    bands: ['C07', 'C08', 'C09', 'C10', 'C11', 'C12', 'C13', 'C14', 'C15']
+    standard_name: night_ir_with_background
+
+  night_ir_with_background_hires:
+    bands: ['C07', 'C08', 'C09', 'C10', 'C11', 'C12', 'C13', 'C14', 'C15']
+    standard_name: night_ir_with_background
+
+  cira_fire_temperature:
+    bands: ['C05', 'C06', 'C07']
+    standard_name: cira_fire_temperature
+
+  cira_day_convection:
+    bands: ['C02', 'C05', 'C07', 'C08', 'C10', 'C13']
+    standard_name: cira_day_convection
+
+  cimss_cloud_type:
+    bands: ['C02', 'C04', 'C05']
+    standard_name: cimss_cloud_type
+
+  ash:
+    bands: ['C11', 'C13', 'C14', 'C15']
+    standard_name: ash
+
+  dust:
+    bands: ['C11', 'C13', 'C14', 'C15']
+    standard_name: dust
+
+  cloud_phase_distinction:
+    bands: ['C02', 'C05', 'C13']
+    standard_name: cloud_phase_distinction
+
+  cloud_phase_distinction_raw:
+    bands: ['C02', 'C05', 'C13']
+    standard_name: cloud_phase_distinction
+
+  water_vapors1:
+    bands: ['C08', 'C10', 'C13']
+    standard_name: water_vapors1
+
+  water_vapors2:
+    bands: ['C08', 'C10']
+    standard_name: water_vapors2
+
+  convection:
+    bands: ['C02', 'C05', 'C07', 'C08', 'C10', 'C13']
+    standard_name: convection
+
+  so2:
+    bands: ['C09', 'C10', 'C11', 'C13']
+    standard_name: so2
+
+  snow_fog:
+    bands: ['C03', 'C05', 'C07', 'C13']
+    standard_name: snow
+
+  night_microphysics:
+    bands: ['C07', 'C13', 'C15']
+    standard_name: night_microphysics
+
+  night_microphysics_eum:
+    bands: ['C07', 'C14', 'C15']
+    standard_name: night_microphysics
+
+  fire_temperature_awips:
+    bands: ['C05', 'C06', 'C07']
+    standard_name: fire_temperature
+
+  land_cloud_fire:
+    bands: ['C02', 'C03', 'C06']
+    standard_name: land_cloud_fire
+
+  land_cloud:
+    bands: ['C02', 'C03', 'C05']
+    standard_name: land_cloud
+
+  snow:
+    bands: ['C03', 'C05', 'C07']
+    standard_name: snow
+
+  day_microphysics_eum:
+    bands: ['C03', 'C07', 'C14']
+    standard_name: day_microphysics
+
+  day_microphysics_abi:
+    bands: ['C03', 'C06', 'C13']
+    standard_name: day_microphysics_ahi
+
+  cloud_phase:
+    bands: ['C02', 'C05', 'C06']
+    standard_name: cloud_phase
+
+  cloud_phase_raw:
+    bands: ['C02', 'C05', 'C06']
+    standard_name: cloud_phase
+
+  tropical_airmass:
+    bands: ['C08', 'C10', 'C12', 'C13']
+    standard_name: tropical_airmass
+
+  color_infrared:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: true_color
+
+  highlight_C14:
+    bands: ['C14']
+    standard_name: highlighted_toa_brightness_temperature
+
+  true_color_reproduction:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: true_color_reproduction
+
+  true_color_reproduction_corr:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: true_color_reproduction_color_stretch
+
+  true_color_reproduction_uncorr:
+    bands: ['C01', 'C02', 'C03']
+    standard_name: true_color_reproduction_color_stretch

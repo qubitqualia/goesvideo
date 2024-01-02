@@ -1,0 +1,16 @@
+{
+    "Scene": "C01",
+    "Satellite": "goes-east",
+    "Product": "ABI-L2-CMIPF",
+    "Region": "full",
+    "Start_Time": "2023-10-22 14:00:00",
+    "End_Time": "2023-10-22 15:00:00",
+    "Keep_Names": false,
+    "Interval": 1,
+    "Crop_Box": [
+        -97,
+        21,
+        -78,
+        40
+    ]
+}
