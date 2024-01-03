@@ -30,8 +30,8 @@ import satpy.utils
 from colorama import Fore
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from goesvideo import utils
-from goesvideo import exceptions
+import goesvideo.utils as utils
+import goesvideo.exceptions as exceptions
 
 
 class GoesBase:
