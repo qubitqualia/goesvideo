@@ -19,6 +19,7 @@ from botocore import UNSIGNED
 from botocore.config import Config
 import botocore.exceptions
 import boto3.exceptions
+import numpy as np
 import cv2
 from PIL import Image
 from moviepy.editor import ImageSequenceClip
