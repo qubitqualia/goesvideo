@@ -90,7 +90,7 @@ def add_text(img, **kwargs):
         y = position[1]
 
     if opacity != 1:
-        draw.text((x, y), label, fill=fontcolor, font_size=fontsize, **kwargs)
+        draw.text((x, y), label, fill=fontcolor, font=font, font_size=fontsize, **kwargs)
         img = img.convert("RGBA")
         img = Image.alpha_composite(img, txtimg)
     else:
