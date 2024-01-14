@@ -8,6 +8,7 @@ from datetime import datetime
 import numpy as np
 from moviepy.editor import ImageSequenceClip, VideoFileClip
 from colorama import Fore
+import copy
 
 
 # Functions for image modifications
@@ -97,6 +98,7 @@ def add_text(img, **kwargs):
             (x, y), label, fill=fontcolor, font=font, font_size=fontsize, **kwargs
         )
 
+    img = img.convert('RGB')
     return img
 
 
@@ -348,7 +350,7 @@ def modify_image(img, **kwargs):
 
     :return: PIL Image
     """
-
+    kwargs_copy = copy.deepcopy(kwargs)
     # Unpack kwargs
     cmap = kwargs.get("cmap", None)
     timestamps = kwargs.get("timestamps", None)
@@ -368,7 +370,7 @@ def modify_image(img, **kwargs):
         img = Image.fromarray(np.uint8(cmap(imgarr) * 255))
 
     if timestamps:
-        ftime = timestamps.pop("label")
+        ftime = timestamps.get("label")
 
         img = add_timestamps(img, ftime, **timestamps)
 
@@ -376,20 +378,21 @@ def modify_image(img, **kwargs):
         img = add_text(img, **text)
 
     if arrow:
-        startpos = arrow.pop("start_position")
-        endpos = arrow.pop("end_position")
+        startpos = arrow.get("start_position")
+        endpos = arrow.get("end_position")
 
         img = add_arrow(img, startpos, endpos, **arrow)
 
     if circle:
-        centerpos = circle.pop("centerpos")
-        radius = circle.pop("radius")
+        centerpos = circle.get("centerpos")
+        radius = circle.get("radius")
 
         img = add_circle(img, centerpos, radius, **circle)
 
     if res:
         img = img.resize((res[0], res[1]))
 
+    kwargs = kwargs_copy
     return img
 
 
@@ -531,8 +534,18 @@ class GoesClip(VideoFileClip):
         :return: None
         """
 
-        tstart = t_edit_start
-        tend = t_edit_end
+        if t_edit_start and t_edit_end:
+            tstart = t_edit_start
+            tend = t_edit_end
+        elif t_edit_end:
+            tstart = 0
+            tend = t_edit_end
+        elif t_edit_start:
+            tstart = t_edit_start
+            tend = self.duration
+        else:
+            tstart = 0
+            tend = self.duration
 
         if not freeze:
             clip = self.fl(
