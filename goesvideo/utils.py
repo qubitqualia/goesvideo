@@ -7,6 +7,7 @@ from matplotlib import colormaps
 from datetime import datetime
 import numpy as np
 from moviepy.editor import ImageSequenceClip, VideoFileClip
+from moviepy.video.fx import freeze as frz
 from colorama import Fore
 import copy
 
@@ -39,6 +40,7 @@ def add_text(img, **kwargs):
     fontsize = kwargs.get("fontsize", None)
     label = kwargs["label"]
     opacity = kwargs.get("opacity", 1)
+    rotation = kwargs.get("rotation", 0)
 
     # Convert input image to RGB
     img = img.convert("RGB")
@@ -51,13 +53,11 @@ def add_text(img, **kwargs):
 
     # If opacity equals 1 then text can be added directly to the input image
     # Otherwise, need to create a new image layer for alpha compositing
-    if opacity != 1:
-        fontcolor = (fontcolor[0], fontcolor[1], fontcolor[2], int(opacity * 255))
-        layercolor = (fontcolor[0], fontcolor[1], fontcolor[2], 0)
-        txtimg = Image.new("RGBA", img.size, layercolor)
-        draw = ImageDraw.Draw(txtimg)
-    else:
-        draw = ImageDraw.Draw(img)
+
+    fontcolor = (fontcolor[0], fontcolor[1], fontcolor[2], int(opacity * 255))
+    layercolor = (fontcolor[0], fontcolor[1], fontcolor[2], 0)
+    txtimg = Image.new("RGBA", img.size, layercolor)
+    draw = ImageDraw.Draw(txtimg)
 
     upper = 0
     lower = img.height
@@ -89,14 +89,16 @@ def add_text(img, **kwargs):
         x = position[0]
         y = position[1]
 
-    if opacity != 1:
-        draw.text((x, y), label, fill=fontcolor, font=font, font_size=fontsize, **kwargs)
-        img = img.convert("RGBA")
-        img = Image.alpha_composite(img, txtimg)
-    else:
-        draw.text(
-            (x, y), label, fill=fontcolor, font=font, font_size=fontsize, **kwargs
-        )
+    draw.text((0, 0), label, fill=fontcolor, font=font, font_size=fontsize, **kwargs)
+    img = img.convert("RGBA")
+
+    # Get bounding box for text and crop to size before rotating
+    bbox = draw.textbbox((0, 0), label, font=font, font_size=fontsize)
+    txtimg = txtimg.crop(bbox)
+    txtimg = txtimg.rotate(-rotation, expand=True)
+
+    img.paste(txtimg, (x, y), txtimg)
+    #img = Image.alpha_composite(img, txtimg)
 
     img = img.convert('RGB')
     return img
@@ -295,6 +297,11 @@ def add_arrow(
 
     return img
 
+def add_triangle(img, xy, fill=None, outline=None, width=1):
+    draw = ImageDraw.Draw(img)
+    draw.polygon(xy, fill=fill, outline=outline, width=width)
+
+    return img
 
 def modify_image(img, **kwargs):
     """
@@ -321,6 +328,7 @@ def modify_image(img, **kwargs):
                                      'fontpath': (str) path to ttf font
                                      'fontcolor': (tup) RGB color of font,
                                      'fontsize': (int) size of font in pixels
+                                     'rotation': (float) angle in degrees for clockwise rotation
                                      }
                    - 'res': (tup) output resolution w, h in pixels
                    - 'arrow': (dict) add an arrow to the image, and optionally, an anchored text string
@@ -347,6 +355,10 @@ def modify_image(img, **kwargs):
                                        'outline': (tup) RGB color of circle outline,
                                        'width': (int) width of circle outline in pixels,
                                        }
+                   - 'triangle': (dict) {'coords': (list) x, y pixel coordinates of vertices as a tuple,
+                                         'fill': (tup) RGB fill color for triangle,
+                                         'outline': (tup) RGB color of triangle outline,
+                                         'width': (int) width of triangle outline in pixels
 
     :return: PIL Image
     """
@@ -358,6 +370,7 @@ def modify_image(img, **kwargs):
     res = kwargs.get("res", None)
     arrow = kwargs.get("arrow", None)
     circle = kwargs.get("circle", None)
+    triangle = kwargs.get("triangle", None)
 
     if cmap:
         if ".json" in cmap:
@@ -375,13 +388,30 @@ def modify_image(img, **kwargs):
         img = add_timestamps(img, ftime, **timestamps)
 
     if text:
-        img = add_text(img, **text)
+        if isinstance(text, list):
+            for t in text:
+                text_new = copy.deepcopy(t)
+                img = add_text(img, **text_new)
+        else:
+            text_new = copy.deepcopy(text)
+            img = add_text(img, **text_new)
 
     if arrow:
-        startpos = arrow.get("start_position")
-        endpos = arrow.get("end_position")
+        if isinstance(arrow, list):
+            for a in arrow:
+                arrow_new = copy.deepcopy(a)
+                startpos = arrow_new.pop("start_position")
+                endpos = arrow_new.pop("end_position")
 
-        img = add_arrow(img, startpos, endpos, **arrow)
+                img = add_arrow(img, startpos, endpos, **arrow_new)
+        else:
+            arrow_new = copy.deepcopy(arrow)
+            startpos = arrow_new.pop("start_position")
+            endpos = arrow_new.pop("end_position")
+
+            img = add_arrow(img, startpos, endpos, **arrow_new)
+
+
 
     if circle:
         centerpos = circle.get("centerpos")
@@ -392,7 +422,15 @@ def modify_image(img, **kwargs):
     if res:
         img = img.resize((res[0], res[1]))
 
+    if triangle:
+        xy = triangle['coords']
+        fill = triangle.get('fill', None)
+        outline = triangle.get('outline', None)
+        width = triangle.get('width', 1)
+        img = add_triangle(img, xy, fill=fill, outline=outline, width=width)
+
     kwargs = kwargs_copy
+    img.convert('RGB')
     return img
 
 
@@ -562,18 +600,21 @@ class GoesClip(VideoFileClip):
                 if kwargs:
                     img = modify_image(img, **kwargs)
                 nparr = np.array(img, dtype=np.uint8)
-                clip = self.fl(
+                frzclip = frz.freeze(self, t=t_edit_start, freeze_duration=t_edit_end-t_edit_start)
+                clip = frzclip.fl(
                     lambda get_frame, t: nparr if tstart <= t <= tend else get_frame(t)
                 )
             else:
-                if self.size != freeze_img.size:
+                if self.size[0] != freeze_img.size[0] or self.size[1] != freeze_img.size[1]:
                     kwargs["res"] = (self.size[0], self.size[1])
 
                 if kwargs:
                     freeze_img = modify_image(freeze_img, **kwargs)
 
+                freeze_img = freeze_img.convert('RGB')
                 nparr = np.array(freeze_img, dtype=np.uint8)
-                clip = self.fl(
+                frzclip = frz.freeze(self, t=t_edit_start, freeze_duration=t_edit_end - t_edit_start)
+                clip = frzclip.fl(
                     lambda get_frame, t: nparr if tstart <= t <= tend else get_frame(t)
                 )
 

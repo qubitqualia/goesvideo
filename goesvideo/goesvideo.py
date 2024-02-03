@@ -1575,9 +1575,6 @@ class GoesAnimator(GoesBase):
                 if coastlines:
                     suffix += " coastlines,"
                     _exit = True
-                if kwargs:
-                    suffix += " **kwargs,"
-                    _exit = True
                 if _exit:
                     raise exceptions.InvalidArgumentError(
                         f"Cannot pass arguments {suffix.rstrip(',')} for "
