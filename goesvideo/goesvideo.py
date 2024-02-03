@@ -1749,6 +1749,14 @@ class GoesAnimator(GoesBase):
 
                 img = Image.open(file)
 
+                if res == "auto":
+                    width, height = self._get_optimal_resolution(img)
+                    img = img.resize((width, height))
+                elif res == "full":
+                    pass
+                else:
+                    img = img.resize((res[0], res[1]))
+
                 if cmap:
                     img = img.convert("L")
                     imgarr = np.array(img) / 255
@@ -1760,14 +1768,6 @@ class GoesAnimator(GoesBase):
 
                 if text:
                     img = utils.add_text(img, **text)
-
-                if res == "auto":
-                    width, height = self._get_optimal_resolution(img)
-                    img = img.resize((width, height))
-                elif res == "full":
-                    pass
-                else:
-                    img = img.resize((res[0], res[1]))
 
                 if codec == "rawvideo" or codec == "png":
                     img = Image.fromarray(
