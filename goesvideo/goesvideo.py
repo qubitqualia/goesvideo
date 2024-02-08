@@ -32,7 +32,12 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import goesvideo.utils as utils
 import goesvideo.exceptions as exceptions
+from satpy.writers import to_image
+import trollimage.colormap as cm
 
+def convert(pil_img, mode):
+    img = pil_img.convert(mode)
+    return img
 
 class GoesBase:
     def __init__(self, sat, region, product):
@@ -344,7 +349,12 @@ class GoesDownloader(GoesBase):
         :param scenename: (str) name of Satpy scene (e.g. 'true_color')
         :return: (dict) filenames
         """
-        req_bands = self._get_scene_bands(scenename)
+        #THIS IS A VERY SPECIFIC FIX - NEED TO MAKE MORE GENERAL TO HANDLE OTHER PRODUCTS
+        if not scenename.startswith('Power'):
+            req_bands = self._get_scene_bands(scenename)
+        else:
+            req_bands = ['FDC']
+
         if self._scene_dict_ready:
             retdict = {}
             for key in req_bands:
@@ -393,8 +403,12 @@ class GoesDownloader(GoesBase):
         else:
             filtered_remote = self.remote_scene_files
 
+        #THIS IS A VERY SPECIFIC FIX - NEED TO MAKE GENERAL TO COVER OTHER PRODUCTS
         if scenename:
-            req_bands = self._get_scene_bands(scenename)
+            if not scenename.startswith('Power'):
+                req_bands = self._get_scene_bands(scenename)
+            else:
+                req_bands = ['FDC']
         else:
             req_bands = filtered_remote.keys()
 
@@ -1181,13 +1195,27 @@ class GoesCompositor(GoesBase):
                         )
                     elif output_format == "geotiff":
                         svname += ".tif"
-                        new_scene.save_dataset(
-                            scenename,
-                            writer="geotiff",
-                            filename=str(folder_path / svname),
-                            fill_value=False,
-                            **kwargs,
-                        )
+                        if scenename == 'Power' or scenename == 'Temp':
+                            img = to_image(new_scene[scenename])
+
+                            cmap = cm.Colormap((1, (1.0, 0.729, 0.729, 0.6)),
+                                               (10, (0.988, 0.51, 0.51, 0.6)),
+                                               (100, (0.988, 0.239, 0.239, 0.6)),
+                                               (200, (1.0, 0.0, 0.0, 0.6)))
+                            img.apply_pil(convert, output_mode='LA', fun_args='LA')
+                            img.colorize(cmap)
+                            img.rio_save(str(folder_path / svname))
+                        else:
+                            new_scene.save_dataset(scenename, writer='geotiff', filename=str(folder_path / svname),
+                                                   keep_palette=True)
+
+                        #new_scene.save_dataset(
+                        #    scenename,
+                        #    writer="geotiff",
+                        #    filename=str(folder_path / svname),
+                        #    fill_value=False,
+                        #    **kwargs,
+                        #)
 
                     with open(str(folder_path / "timestamps.csv"), "a") as f:
                         tstr = self._get_timestamp_from_filename(
