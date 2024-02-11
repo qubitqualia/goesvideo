@@ -237,8 +237,9 @@ class Overlay:
 
                     self._crop_geotiff(file, self.bbox_overlay)
                     if overlay == 0:
-                        if not basedone:
+                        if basedone:
                             self._crop_geotiff(baseimgpath, self.bbox_base)
+
 
                 # Resize images
                 if not res:
