@@ -39,6 +39,9 @@ def convert(pil_img, mode):
     img = pil_img.convert(mode)
     return img
 
+def test():
+    print('Test!')
+
 class GoesBase:
     def __init__(self, sat, region, product):
         colorama_init()
@@ -906,7 +909,7 @@ class GoesCompositor(GoesBase):
 
         kwargs["keep_filenames"] = keep_filenames
         kwargs["coastlines"] = coastlines
-        kwargs["resample"] = resampling
+        kwargs["resampling"] = resampling
 
         # Gather local data required to produce scene or offer to download it
         # Update local and remote file lists and see which remote files are needed to prepare the scene
