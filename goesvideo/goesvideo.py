@@ -352,8 +352,8 @@ class GoesDownloader(GoesBase):
         :param scenename: (str) name of Satpy scene (e.g. 'true_color')
         :return: (dict) filenames
         """
-        #THIS IS A VERY SPECIFIC FIX - NEED TO MAKE MORE GENERAL TO HANDLE OTHER PRODUCTS
-        if not scenename.startswith('Power'):
+        # Currently, the downloader can handle the ABI-L2-CMIP and ABI-L2-FDC products
+        if not scenename.startswith('Power') and not scenename.startswith('Temp'):
             req_bands = self._get_scene_bands(scenename)
         else:
             req_bands = ['FDC']
@@ -406,9 +406,9 @@ class GoesDownloader(GoesBase):
         else:
             filtered_remote = self.remote_scene_files
 
-        #THIS IS A VERY SPECIFIC FIX - NEED TO MAKE GENERAL TO COVER OTHER PRODUCTS
+        #Currently, the downloader can handle the ABI-L2-CMIP and ABI-L2-FDC products
         if scenename:
-            if not scenename.startswith('Power'):
+            if not scenename.startswith('Power') and not scenename.startswith('Temp'):
                 req_bands = self._get_scene_bands(scenename)
             else:
                 req_bands = ['FDC']
@@ -1171,12 +1171,13 @@ class GoesCompositor(GoesBase):
                     else:
                         tstamp = self._get_timestamp_from_filename(filenames[0])
                         if tzinfo:
-                            tstamp = tzinfo[0].localize(tstamp)
+                            tstamp = pytz.utc.localize(tstamp).astimezone(tzinfo[0])
                             suffix = tzinfo[1]
                         else:
+                            tstamp = pytz.utc.localize(tstamp)
                             suffix = "UTC"
 
-                        svname = tstamp.isoformat().replace("T", " ") + " " + suffix
+                        svname = tstamp.isoformat()[0:-6].replace("T", " ") + " " + suffix
                         svname = svname.replace(":", "_")
 
                     # Add coastlines to the scene using options stored in the instance
@@ -1198,6 +1199,7 @@ class GoesCompositor(GoesBase):
                         )
                     elif output_format == "geotiff":
                         svname += ".tif"
+                        # These settings are specific to the ABI-L2-FDC product
                         if scenename == 'Power' or scenename == 'Temp':
                             img = to_image(new_scene[scenename])
 
