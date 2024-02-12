@@ -219,10 +219,9 @@ class Overlay:
 
             # Generate save name for image
             if self.base_is_reference:
-                svname = self.baseimgfiles[i].stem + self.baseimgfiles[i].suffix
+                svname = self.baseimgfiles[i].stem + '.png'
             else:
-                svname = (self.overlayimgfiles[self.overlay_reference_idx][i].stem +
-                          self.overlayimgfiles[self.overlay_reference_idx][i].suffix)
+                svname = (self.overlayimgfiles[self.overlay_reference_idx][i].stem + '.png')
 
             # Get base image path
             if self.base_is_static:
