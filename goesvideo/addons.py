@@ -1,12 +1,10 @@
 from osgeo import gdal
 from pathlib import Path
 from PIL import Image
-from colorama import init as colorama_init
 from colorama import Fore
 import rasterio
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 import tempfile
-import goesvideo.exceptions
 import sys
 import numpy as np
 import os
@@ -27,9 +25,9 @@ class Overlay:
                                   the object instance will be initialized using all available geotiffs or other image
                                   formats in the folder and the base image will be dyanmic. If a single file or
                                   a folder containing a single file is provided, the base image will be static
-        @param overlaypaths:
-        @param outpath:
-        @param out_crs:
+        @param overlaypaths: (str) path to folder containing overlay images
+        @param outpath: (str) path to save output images
+        @param out_crs: (obj) CRS to use for output images
         @param bbox: (list) [minx, maxy, maxx, miny] if provided, the base image and overlay images will all be cropped
                             to these limits. If the base image(s) is provided as a simple image (e.g. png, bmp, jpg), then
                             the bbox parameter must be specified. All overlay images will then be cropped accordingly in
@@ -687,16 +685,11 @@ class Overlay:
         if targettz != srctz:
             target_time = target_time.astimezone(srctz)
 
-
         closest_time = min(src_times, key=lambda d: abs(d - target_time))
         idx = src_times.index(closest_time)
         #file = srcarray[idx]
 
         return idx
-
-
-
-
 
     def _get_separator(self, instr, startidx, startchar):
         right_sep = None
