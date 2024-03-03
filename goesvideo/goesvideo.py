@@ -822,12 +822,6 @@ class GoesCompositor(GoesBase):
         self.imgsvpath.mkdir(exist_ok=True)
         self.datapath.mkdir(exist_ok=True)
 
-        self.coastoptions = {
-            "coast_dir": "C:\\Users\\jmatt\\Documents\\goes18\\shp\\",
-            "color": (235, 235, 71),
-            "resolution": "h",
-            "width": 2,
-        }
         self.satpy_debug = False
         self.satpy_cache = False
         self.satpy_cache_dir = None
@@ -1212,7 +1206,7 @@ class GoesCompositor(GoesBase):
                             img.rio_save(str(folder_path / svname))
                         else:
                             new_scene.save_dataset(scenename, writer='geotiff', filename=str(folder_path / svname),
-                                                   keep_palette=True)
+                                                   keep_palette=True, **kwargs)
 
                         #new_scene.save_dataset(
                         #    scenename,
@@ -1240,12 +1234,15 @@ class GoesCompositor(GoesBase):
 
         return folder_path
 
-    def set_coastlines_options(self, path=None, color=(235, 235, 71), res="h", width=2):
+    def set_coastlines_options(self, path=None, color=(235, 235, 71), res="h", width=2, **kwargs):
         if path:
             self.coastoptions["coast_dir"] = path
         self.coastoptions["color"] = color
         self.coastoptions["resolution"] = res
         self.coastoptions["width"] = width
+        if kwargs:
+            for key in kwargs:
+                self.coastoptions[key] = kwargs[key]
 
     def set_satpy_cache_dir(self, path):
         self.satpy_cache_dir = path

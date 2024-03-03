@@ -10,6 +10,8 @@ from moviepy.editor import ImageSequenceClip, VideoFileClip
 from moviepy.video.fx import freeze as frz
 from colorama import Fore
 import copy
+import pathlib
+import os
 
 
 # Functions for image modifications
@@ -118,7 +120,10 @@ def add_timestamps(img, label, **kwargs):
             _t = datetime.fromisoformat(label)
         else:
             _t = label
-        tstamp = pytz.utc.localize(_t).astimezone(_tz)
+        try:
+            tstamp = pytz.utc.localize(_t).astimezone(_tz)
+        except ValueError:
+            tstamp = _t.astimezone(_tz)
         label = tstamp.isoformat()[0:-6].replace("T", " ") + " " + _abbr
     else:
         label = label.replace("T", " ") + " " + "UTC"
@@ -433,6 +438,78 @@ def modify_image(img, **kwargs):
     img.convert('RGB')
     return img
 
+def get_timestamp(file, tformatdict, tz=pytz.utc):
+    """
+    Applies user-provided time format string to filename to extract timestamp.
+    The returned datetime also has its timezone set to that provided, or UTC if
+    none is provided
+    @param file: (str) filename containing datetime string
+    @param tformatdict: (dict) indexes returned by _time_format_str
+    @param tz: (pytz tz obj) pytz timezone object
+    @return: (datetime) tz-aware datetime
+    """
+
+
+    kwargs = {}
+    if tformatdict['Y'][0] is not None and tformatdict['Y'][1] is not None:
+        year = int(file[tformatdict['Y'][0]:tformatdict['Y'][1]])
+    else:
+        year = None
+    if tformatdict['M'][0] is not None and tformatdict['M'][1] is not None:
+        month = int(file[tformatdict['M'][0]:tformatdict['M'][1]])
+    else:
+        month = None
+    if tformatdict['D'][0] is not None and tformatdict['D'][1] is not None:
+        day = int(file[tformatdict['D'][0]:tformatdict['D'][1]])
+    else:
+        day = None
+    if tformatdict['h'][0] and tformatdict['h'][1]:
+        kwargs['hour'] = int(file[tformatdict['h'][0]:tformatdict['h'][1]])
+    if tformatdict['m'][0] and tformatdict['m'][1]:
+        kwargs['minute'] = int(file[tformatdict['m'][0]:tformatdict['m'][1]])
+    if tformatdict['s'][0] and tformatdict['s'][1]:
+        kwargs['second'] = int(file[tformatdict['s'][0]:tformatdict['s'][1]])
+
+    if not year or not month or not day:
+        print(f'{Fore.RED} ERROR: Could not extract time from provided filename {file}. Check time format string.')
+        t = None
+
+    t = tz.localize(datetime(year, month, day, **kwargs))
+
+    return t
+
+def time_format_str(instr):
+    if instr:
+        chars = ['Y', 'M', 'D', 'h', 'm', 's']
+        start_idxs = []
+        end_idxs = []
+        start_done = False
+        char_found = False
+
+        for c in chars:
+            for i, _s in enumerate(instr):
+                if _s == c and not start_done:
+                    start_idxs.append(i)
+                    start_done = True
+                    char_found = True
+                elif _s != c and start_done:
+                    end_idxs.append(i)
+                    start_done = False
+                elif _s == c and start_done and i == len(instr) - 1:
+                    end_idxs.append(i)
+            if not char_found:
+                start_idxs.append(None)
+                end_idxs.append(None)
+            else:
+                char_found = False
+
+        retdict = {}
+        for i, c in enumerate(chars):
+            retdict[c] = (start_idxs[i], end_idxs[i])
+    else:
+        retdict = None
+
+    return retdict
 
 def annotate_video(
     filepath, svname=None, t_edit_start=None, t_edit_end=None, freeze=False, **kwargs
@@ -510,6 +587,54 @@ def annotate_video(
     outclip.write_videofile(svname, codec=codec)
 
     return
+
+def replace_file_timezone(file, in_tz, out_tz, out_abbr):
+    if isinstance(file, str):
+        tstr = file.split('\\')[-1].split('.')[0]
+        svpath = '\\'.join(file.split('\\')[0:-1])
+        svpath = svpath.rstrip('\\') + '\\'
+    elif isinstance(file, pathlib.Path):
+        tstr = file.stem
+        svpath = file.parent
+    else:
+        print(f'{Fore.RED} ERROR: File path must be provided as a string or Path object')
+        return
+
+    if not isinstance(in_tz, pytz.BaseTzInfo):
+        print(f'{Fore.RED} ERROR: Timezone must be provided as a pytz timezone object.')
+        return
+    if not isinstance(out_tz, pytz.BaseTzInfo):
+        print(f'{Fore.RED} ERROR: Timezone must be provided as a pytz timezone object.')
+        return
+
+    _s1 = tstr.split(' ')[0]
+    _s2 = tstr.split(' ')[1]
+    year = int(_s1.split('-')[0])
+    month = int(_s1.split('-')[1])
+    day = int(_s1.split('-')[2])
+    hr = int(_s2.split('_')[0])
+    min = int(_s2.split('_')[1])
+    sec = int(_s2.split('_')[2])
+
+    t = datetime(year, month, day, hour=hr, minute=min, second=sec)
+    t2 = in_tz.localize(t)
+    t3 = t2.astimezone(out_tz)
+    newtstr = t3.isoformat()
+    newtstr = newtstr.replace('T', ' ').replace(':', '_')
+    newtstr = newtstr[0:-6] + ' ' + out_abbr
+
+    if isinstance(file, str):
+        fname = svpath + newtstr
+    else:
+        fname = svpath / newtstr
+
+    os.rename(file, fname)
+    return
+
+
+
+
+
 
 
 # Class for video editing

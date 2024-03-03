@@ -14,12 +14,14 @@ import shutil
 import copy
 from datetime import datetime, timedelta
 import pytz
+from tqdm import tqdm
+from goesvideo.utils import get_timestamp, time_format_str
 
-# overlay 1 - [img1, img
 
 class Overlay:
 
-    def __init__(self, baseimgpath, overlaypaths, outpath, out_crs=None, bbox=None):
+    def __init__(self, baseimgpath, overlaypaths, overlay_timezones, outpath,
+                 out_crs=None, bbox=None, base_timezone=None):
         """
         @param baseimgpath: (str) path to folder or file to use for base image(s). If a folder is provided
                                   the object instance will be initialized using all available geotiffs or other image
@@ -32,12 +34,15 @@ class Overlay:
                             to these limits. If the base image(s) is provided as a simple image (e.g. png, bmp, jpg), then
                             the bbox parameter must be specified. All overlay images will then be cropped accordingly in
                             order to match up with the base image.
+        @param base_timezone: (dict) {'timezone': (pytz tz obj), 'filename format': (str)}
+        @param overlay_timezones: (dict) {'timezone': [(pytz tz obj)], 'filename format': [(str)]}
 
         """
         self.bbox = bbox
         self.outpath = Path(outpath)
 
         # Setup temporary folders
+        print(f'{Fore.GREEN} Initalizing working folders...', end='')
         self.basetmpdir = tempfile.TemporaryDirectory()
         self.basepath = Path(self.basetmpdir.name)
         self.overlaytmpdirs = []
@@ -91,7 +96,41 @@ class Overlay:
         else:
             self.base_is_static = False
 
-        #    Copy overlay files - Overlays can only be geotiff format
+
+        # Configure timezones and filename formats
+        if base_timezone:
+            self.base_tz = base_timezone.pop('timezone', pytz.utc)
+            base_format = base_timezone.pop('filename format', None)
+            self.base_tformat = time_format_str(base_format)
+        else:
+            self.base_tz = None
+            self.base_tformat = None
+
+        self.overlays_tz = overlay_timezones.pop('timezone', None)
+        overlays_format = overlay_timezones.pop('filename format', None)
+
+        if not self.overlays_tz:
+            self.overlays_tz = [pytz.utc] * len(overlaypaths)
+
+        err = (f"{Fore.RED} ERROR: Timezone and filename format (e.g. 'YYYY-MM-DD hh_mm_ss XXX') must be provided for "
+               f" overlay images. Exiting...")
+        err2 = (f"{Fore.RED} ERROR: Timezone and filename format (e.g. 'YYYY-MM-DD hh_mm_ss XXX') must be provided for "
+               f" base images. Exiting...")
+
+        if not overlays_format:
+            print(err)
+            sys.exit(0)
+        elif len(overlays_format) != len(overlaypaths):
+            print(err)
+            sys.exit(0)
+
+        if not self.base_is_static and self.base_tformat is None:
+            print(err2)
+            sys.exit(0)
+
+        self.overlay_tformats = [time_format_str(x) for x in overlays_format]
+
+        # Copy overlay files - Overlays can only be geotiff format
         self.overlayimgfiles = []
         for i, p in enumerate(overlaypaths):
             p = Path(p)
@@ -104,16 +143,22 @@ class Overlay:
                 fname = self._copy_image(file, self.overlaypaths[i])
                 row.append(fname)
             self.overlayimgfiles.append(row)
+        print(f'{Fore.GREEN} Done!')
 
         # Calculate interval between images in each overlay path
+        print(f'{Fore.GREEN} Setting up image arrays...', end='')
         overlay_intervals = []
-        for overlay in self.overlayimgfiles:
-            overlay_intervals.append(self._calculate_interval(overlay[0], overlay[1]))
+        for i, overlay in enumerate(self.overlayimgfiles):
+            overlay_intervals.append(self._calculate_interval((overlay[0], overlay[1]),
+                                                              (self.overlay_tformats[i],),
+                                                               (self.overlays_tz[i],)))
 
         # Calculate interval between base images, if applicable
         base_interval = 0
         if not self.base_is_static:
-            base_interval = self._calculate_interval(self.baseimgfiles[0], self.baseimgfiles[1])
+            base_interval = self._calculate_interval((self.baseimgfiles[0], self.baseimgfiles[1]),
+                                                     (self.base_tformat,),
+                                                     (self.base_tz,))
             all_intervals = overlay_intervals + [base_interval]
         else:
             all_intervals = overlay_intervals
@@ -126,33 +171,46 @@ class Overlay:
             if not self.base_is_static:
                 self.framecount = len(self.baseimgfiles)
                 reffiles = self.baseimgfiles
+                refidx = 0
                 self.base_is_reference = True
             else:
                 self.framecount = len(self.overlayimgfiles[-1])
                 reffiles = self.overlayimgfiles[-1]
-                self.base_skip_factor = 0
+                refidx = -1
+                #self.base_skip_factor = 0
         else:
             if not self.base_is_static:
                 self.framecount = len(self.overlayimgfiles[mindt_idx])
                 reffiles = self.overlayimgfiles[mindt_idx]
-                factor = all_intervals[-1] / all_intervals[mindt_idx]
-                if factor - int(factor) > 0.5:
-                    self.base_skip_factor = int(factor) + 1
-                else:
-                    self.base_skip_factor = int(factor)
+                refidx = mindt_idx
+                #factor = all_intervals[-1] / all_intervals[mindt_idx]
+                #if factor - int(factor) > 0.5:
+                    #self.base_skip_factor = int(factor) + 1
+                #else:
+                    #self.base_skip_factor = int(factor)
             else:
                 self.framecount = len(self.overlayimgfiles[mindt_idx])
                 reffiles = self.overlayimgfiles[mindt_idx]
-                self.base_skip_factor = 0
+                refidx = mindt_idx
+                #self.base_skip_factor = 0
 
         # Fill in overlay file lists with duplicates as needed to match the frame count
         new_overlay_list = []
-        for overlay in self.overlayimgfiles:
+        for j, overlay in enumerate(self.overlayimgfiles):
             tmp_list = []
             if len(overlay) < self.framecount:
                 for i, file in enumerate(reffiles):
-                    closest_idx = self._get_closest_time(file.stem, [x.stem for x in overlay])
+                    if self.base_is_reference:
+                        closest_idx = self._get_closest_time((file.stem, self.base_tformat),
+                                                         ([x.stem for x in overlay], self.overlay_tformats[j]),
+                                                             tz=(self.base_tz, self.overlays_tz[j]))
+                    else:
+                        closest_idx = self._get_closest_time((file.stem, self.overlay_tformats[refidx]),
+                                                             ([x.stem for x in overlay], self.overlay_tformats[j]),
+                                                             tz=(self.overlays_tz[refidx], self.overlays_tz[j]))
+
                     tmp_list.append(overlay[closest_idx])
+
                 new_overlay_list.append(tmp_list)
             else:
                 new_overlay_list.append(overlay)
@@ -161,14 +219,18 @@ class Overlay:
 
         # Fill in the base file list with duplicates if needed
         if not self.base_is_static:
-            new_base_list = []
-            for i, file in self.baseimgfiles:
-                closest_idx = self._get_closest_time(file.stem, [x.stem for x in reffiles])
-                new_base_list.append(reffiles[closest_idx])
-            self.baseimgfiles = new_base_list
+            if len(self.baseimgfiles) < self.framecount:
+                new_base_list = []
+                for i, file in self.baseimgfiles:
+                    closest_idx = self._get_closest_time((file.stem, self.base_tformat),
+                                                         ([x.stem for x in reffiles], self.overlay_tformats[refidx]),
+                                                         tz=(self.base_tz, self.overlays_tz[refidx]))
+                    new_base_list.append(reffiles[closest_idx])
+                self.baseimgfiles = new_base_list
 
-
+        print(f'{Fore.GREEN} Done!')
         # Default CRS is the CRS of the overlay images
+        print(f'{Fore.GREEN} Setting up image projections...', end='')
         if not out_crs:
             self.out_crs = self.get_crs(self.overlayimgfiles[0][0])
         else:
@@ -204,11 +266,24 @@ class Overlay:
                 self.bbox_overlay = self._transform_bbox(self.bbox, 'EPSG:4326', incrs_overlay)
             else:
                 self.bbox_overlay = bbox
+        print(f'{Fore.GREEN} Done!')
+        print()
+        print(f'{Fore.GREEN} Initialization Complete!')
+        print()
 
     def create_overlays(self, res=None, overlay_opacities=None, overlay_resample=None,
-                        base_resample=None, format='png'):
+                        base_resample=None, save_overlays_gtiff=None):
 
-        for i in range(0, self.framecount):
+        if save_overlays_gtiff:
+            savepath = Path(save_overlays_gtiff)
+            savepath.mkdir(exist_ok=True)
+            overlaypaths = []
+            for i in range(len(self.overlayimgfiles)):
+                op = savepath / f'overlay_{str(i)}'
+                op.mkdir(exist_ok=True)
+                overlaypaths.append(op)
+
+        for i in tqdm(range(0, self.framecount), desc='Frame Number: ', colour='green'):
 
             img_set = []
             img_arr = []
@@ -228,6 +303,8 @@ class Overlay:
                 baseimgpath = self.baseimgfiles[0]
             else:
                 baseimgpath = self.baseimgfiles[i]
+
+            overlay = 0
 
             for overlay, file in enumerate(img_set):
                 #svnames.append(file.stem + '.png')
@@ -259,6 +336,9 @@ class Overlay:
                         else:
                             self._resize_image(baseimgpath, w, h, resample=base_resample)
 
+                if save_overlays_gtiff:
+                    fname = overlaypaths[overlay] / (svname.split('.')[0] + '.tif')
+                    shutil.copy(file, fname)
 
                 # Convert to images and create overlay
                 overlayimg = self._geotiff_to_image(file)
@@ -503,48 +583,159 @@ class Overlay:
         retimg = Image.fromarray(newarr, 'RGB')
         return retimg
 
-    def _calculate_interval(self, file1, file2):
+    def _calculate_interval(self, files, formatdicts, tz=None):
         """
         Calculate interval in seconds between two files
-        @param file1: (str) filename containing an ISO format datetime (e.g. '2023-01-01 10_43_00')
-        @param file2: (str)
-        @return:
+        @param files: (tup) tuple of filenames containing datetime strings (e.g. '2023-01-01 10_43_00')
+        @param formatdicts: (tup) tuple of dicts containing indices returned by _time_format_str
+        @param tz: (tup) tuple of pytz timezone objects
+        @return: interval between two files in seconds
         """
         # Extract datetime from string
-        file1 = file1.stem
-        file2 = file2.stem
+        file1 = files[0].stem
+        file2 = files[1].stem
 
-        t1 = self._get_timestamp(file1)
-        t2 = self._get_timestamp(file2)
+        # Unpack formatdicts argument
+        tformat1 = formatdicts[0]
+        try:
+            tformat2 = formatdicts[1]
+        except IndexError:
+            tformat2 = tformat1
+
+        # Unpack tz argument
+        if tz:
+            tz1 = tz[0]
+            try:
+                tz2 = tz[1]
+            except IndexError:
+                tz2 = tz1
+        else:
+            tz1 = pytz.utc
+            tz2 = pytz.utc
+
+        t1 = get_timestamp(file1, tformat1, tz=tz1)
+        t2 = get_timestamp(file2, tformat2, tz=tz2)
+
+        # Convert times to UTC
+        t1 = t1.astimezone(pytz.utc)
+        t2 = t2.astimezone(pytz.utc)
 
         # Get delta
         delta = abs((t2 - t1).total_seconds())
 
         return delta
 
-    def _get_timestamp(self, file):
-        if '+' not in str(file):
-            # Current format of goesvideo geotiff filenames - given in UTC time showing offset (need to change)
-            t1 = datetime.fromisoformat(' '.join(str(file).split(' ')[0:2]).replace('_', ':'))
-            t1 = t1.replace(tzinfo=pytz.utc)
+    def _get_timestamp(self, file, tformatdict, tz=pytz.utc):
+        """
+        Applies user-provided time format string to filename to extract timestamp.
+        The returned datetime also has its timezone set to that provided, or UTC if
+        none is provided
+        @param file: (str) filename containing datetime string
+        @param tformatdict: (dict) indexes returned by _time_format_str
+        @param tz: (pytz tz obj) pytz timezone object
+        @return: (datetime) tz-aware datetime
+        """
 
+
+        kwargs = {}
+        if tformatdict['Y'][0] is not None and tformatdict['Y'][1] is not None:
+            year = int(file[tformatdict['Y'][0]:tformatdict['Y'][1]])
         else:
-            # Current format of nexrad geotiff filenames - given in local time
-            t1 = datetime.fromisoformat(' '.join(str(file).split('+')[0:2]).replace('_', ':'))
-            t1 = pytz.timezone('Pacific/Honolulu').localize(t1).astimezone(pytz.utc)
+            year = None
+        if tformatdict['M'][0] is not None and tformatdict['M'][1] is not None:
+            month = int(file[tformatdict['M'][0]:tformatdict['M'][1]])
+        else:
+            month = None
+        if tformatdict['D'][0] is not None and tformatdict['D'][1] is not None:
+            day = int(file[tformatdict['D'][0]:tformatdict['D'][1]])
+        else:
+            day = None
+        if tformatdict['h'][0] and tformatdict['h'][1]:
+            kwargs['hour'] = int(file[tformatdict['h'][0]:tformatdict['h'][1]])
+        if tformatdict['m'][0] and tformatdict['m'][1]:
+            kwargs['minute'] = int(file[tformatdict['m'][0]:tformatdict['m'][1]])
+        if tformatdict['s'][0] and tformatdict['s'][1]:
+            kwargs['second'] = int(file[tformatdict['s'][0]:tformatdict['s'][1]])
 
-        # Convert to UTC
-        #1 = t1.astimezone(pytz.utc)
+        if not year or not month or not day:
+            print(f'{Fore.RED} ERROR: Could not extract time from provided filename {file}. Check time format string.')
+            print(f'{Fore.RED} Exiting...')
+            sys.exit(0)
 
-        return t1
+        t = tz.localize(datetime(year, month, day, **kwargs))
 
-    def _get_closest_time(self, target, srcarray):
+        return t
 
-        target_time = self._get_timestamp(target)
-        src_times = [self._get_timestamp(x) for x in srcarray]
+    def _get_closest_time(self, target, srcarray, tz=None):
+
+        if tz:
+            targettz = tz[0]
+            try:
+                srctz = tz[1]
+            except IndexError:
+                srctz = targettz
+        else:
+            targettz = pytz.utc
+            srctz = pytz.utc
+
+        _srcarray = srcarray[0]
+        src_tformat = srcarray[1]
+
+        target_time = get_timestamp(target[0], target[1], targettz)
+        src_times = [get_timestamp(x, src_tformat, srctz) for x in _srcarray]
+
+        if targettz != srctz:
+            target_time = target_time.astimezone(srctz)
+
 
         closest_time = min(src_times, key=lambda d: abs(d - target_time))
         idx = src_times.index(closest_time)
         #file = srcarray[idx]
 
         return idx
+
+
+
+
+
+    def _get_separator(self, instr, startidx, startchar):
+        right_sep = None
+        left_sep = None
+        if startidx == 0:
+            c = 1
+            left_sep = None
+            while True:
+                try:
+                    _s = instr[startidx + c]
+                except KeyError:
+                    right_sep = None
+                    break
+                if _s != startchar:
+                    right_sep = _s
+                    break
+                c += 1
+        else:
+            c = 0
+            while True:
+                try:
+                    _s = instr[startidx - c]
+                except KeyError:
+                    left_sep = None
+                    break
+                if _s != startchar:
+                    left_sep = _s
+                    break
+                c += 1
+            c = 0
+            while True:
+                try:
+                    _s = instr[startidx + c]
+                except KeyError:
+                    right_sep = None
+                    break
+                if _s != startchar:
+                    right_sep = _s
+                    break
+                c += 1
+
+        return left_sep, right_sep
