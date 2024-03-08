@@ -99,7 +99,7 @@ def add_text(img, **kwargs):
     txtimg = txtimg.crop(bbox)
     txtimg = txtimg.rotate(-rotation, expand=True)
 
-    img.paste(txtimg, (x, y), txtimg)
+    img.paste(txtimg, (int(x), int(y)), txtimg)
     #img = Image.alpha_composite(img, txtimg)
 
     img = img.convert('RGB')
@@ -419,8 +419,8 @@ def modify_image(img, **kwargs):
 
 
     if circle:
-        centerpos = circle.get("centerpos")
-        radius = circle.get("radius")
+        centerpos = circle.pop("centerpos", None)
+        radius = circle.pop("radius", None)
 
         img = add_circle(img, centerpos, radius, **circle)
 
@@ -429,9 +429,9 @@ def modify_image(img, **kwargs):
 
     if triangle:
         xy = triangle['coords']
-        fill = triangle.get('fill', None)
-        outline = triangle.get('outline', None)
-        width = triangle.get('width', 1)
+        fill = triangle.pop('fill', None)
+        outline = triangle.pop('outline', None)
+        width = triangle.pop('width', 1)
         img = add_triangle(img, xy, fill=fill, outline=outline, width=width)
 
     kwargs = kwargs_copy

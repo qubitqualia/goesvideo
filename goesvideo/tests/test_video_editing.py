@@ -3,6 +3,7 @@ from PIL import Image
 import sys
 import pytest
 from importlib.resources import files as importfiles
+from moviepy.video.VideoClip import VideoClip
 
 
 def test_video_edit():
@@ -26,7 +27,7 @@ def test_video_edit():
     }
     newclip = clip.annotate(0, 1, freeze=True, **kwargs)
 
-    assert isinstance(newclip, utils.GoesClip)
+    assert isinstance(newclip, VideoClip)
 
     # Test preview
     img = clip.preview(tmark=2, **kwargs)
