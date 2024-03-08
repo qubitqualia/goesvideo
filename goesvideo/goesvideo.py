@@ -821,7 +821,7 @@ class GoesCompositor(GoesBase):
         self.base_dir.mkdir(exist_ok=True)
         self.imgsvpath.mkdir(exist_ok=True)
         self.datapath.mkdir(exist_ok=True)
-        self.coastoptions = None
+        self.coastoptions = {}
         self.satpy_debug = False
         self.satpy_cache = False
         self.satpy_cache_dir = None
