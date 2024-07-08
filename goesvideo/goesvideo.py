@@ -30,7 +30,7 @@ import satpy.utils
 from colorama import Fore
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-import goesvideo.utils as utils
+import goesvideo.utils.editortools as utils
 import goesvideo.exceptions as exceptions
 from satpy.writers import to_image
 import trollimage.colormap as cm
@@ -85,13 +85,14 @@ class GoesBase:
             if "FDC" not in product:
                 self.product = product
                 print(
-                    f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' or 'C' indicating region."
+                    f"{Fore.RED} WARNING - Product should be specified without the trailing \'F\' or \'C\' "
+                    f"indicating region."
                 )
             else:
                 if "FDCC" in product or "FDCF" in product:
                     self.product = product
                     print(
-                        f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' or 'C' "
+                        f"{Fore.RED} WARNING - Product should be specified without the trailing \'F\' or \'C\' "
                         f" indicating region."
                     )
                 else:
