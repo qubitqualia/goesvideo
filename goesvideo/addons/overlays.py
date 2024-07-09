@@ -28,8 +28,15 @@ match the lowest interval.
 
 class Overlay:
 
-    def __init__(self, baseimgpath, overlaypaths, overlay_timezones=None,
-                 base_timezone=None, start_time=None, end_time=None):
+    def __init__(
+        self,
+        baseimgpath,
+        overlaypaths,
+        overlay_timezones=None,
+        base_timezone=None,
+        start_time=None,
+        end_time=None,
+    ):
         """
         @param baseimgpath: (str) path to folder or file to use for base image(s). If a folder is provided
                                   the object instance will be initialized using all available geotiffs or pngs
@@ -59,20 +66,22 @@ class Overlay:
         """
         # Check start and end time parameters
         if not start_time and not end_time:
-            start_time = '1900-01-01 00:00:00'
-            end_time = '2100-01-01 00:00:00'
+            start_time = "1900-01-01 00:00:00"
+            end_time = "2100-01-01 00:00:00"
         elif not start_time:
-            start_time = '1900-01-01 00:00:00'
+            start_time = "1900-01-01 00:00:00"
         elif not end_time:
-            end_time = '2100-01-01 00:00:00'
+            end_time = "2100-01-01 00:00:00"
 
         # Setup temporary working folders for base and overlay images
-        print(f'{Fore.GREEN} Initalizing working folders...', end='')
+        print(f"{Fore.GREEN} Initalizing working folders...", end="")
         self._setup_working_folders(overlaypaths)
         atexit.register(self.cleanup)
-        print(f'{Fore.GREEN} Done!')
+        print(f"{Fore.GREEN} Done!")
 
-        print(f'{Fore.GREEN} Filtering images and copying to working folders...', end='')
+        print(
+            f"{Fore.GREEN} Filtering images and copying to working folders...", end=""
+        )
         # Copy base image files to working folder and filter list of filenames to match start and end times
         self._setup_base_imgs(baseimgpath, base_timezone, start_time, end_time)
 
@@ -81,13 +90,15 @@ class Overlay:
 
         # Match lengths of overlay image arrays to the length of the base array
         self._setup_matched_lists()
-        print(f'{Fore.GREEN} Done!')
+        print(f"{Fore.GREEN} Done!")
 
         # Get projections and bounds for base and overlays
         if self.base_is_geotiff:
             self.base_crs = gistools.get_crs(self.baseimgfiles[0])
             self.base_bbox = gistools.get_bounds(self.baseimgfiles[0])
-            self.base_bbox_latlon = gistools.transform_bbox(self.base_bbox, self.base_crs, 'EPSG:4326')
+            self.base_bbox_latlon = gistools.transform_bbox(
+                self.base_bbox, self.base_crs, "EPSG:4326"
+            )
         else:
             self.base_crs = None
 
@@ -97,28 +108,33 @@ class Overlay:
         for i, overlay in enumerate(self.overlayimgfiles):
             self.overlay_crs.append(gistools.get_crs(overlay[0]))
             self.overlay_bbox.append(gistools.get_bounds(overlay[0]))
-            self.overlay_bbox_latlon.append(gistools.transform_bbox(self.overlay_bbox[i],
-                                                                    self.overlay_crs[i],
-                                                             'EPSG:4326'))
+            self.overlay_bbox_latlon.append(
+                gistools.transform_bbox(
+                    self.overlay_bbox[i], self.overlay_crs[i], "EPSG:4326"
+                )
+            )
         if not self.base_is_geotiff:
             self.base_crs = self.overlay_crs[0]
             self.base_bbox_latlon = self.overlay_bbox_latlon[0]
 
         print()
-        print(f'{Fore.GREEN} Initialization Complete!')
+        print(f"{Fore.GREEN} Initialization Complete!")
         print()
 
-    def create_overlays(self, outpath,
-                        out_crs=None,
-                        res=None,
-                        bbox=None,
-                        overlay_opacities=None,
-                        overlay_resample=False,
-                        base_resample=False,
-                        save_overlays_gtiff=None,
-                        cumulative=False,
-                        cumulative_colormap=None,
-                        output_format='simple_image'):
+    def create_overlays(
+        self,
+        outpath,
+        out_crs=None,
+        res=None,
+        bbox=None,
+        overlay_opacities=None,
+        overlay_resample=False,
+        base_resample=False,
+        save_overlays_gtiff=None,
+        cumulative=False,
+        cumulative_colormap=None,
+        output_format="simple_image",
+    ):
         """
 
         @param outpath: (str) path to save output images
@@ -150,12 +166,12 @@ class Overlay:
             overlay_opacities = [1] * len(self.overlaypaths)
 
         if base_resample:
-            base_kwargs = {'resample': True}
+            base_kwargs = {"resample": True}
         else:
             base_kwargs = {}
 
         if overlay_resample:
-            overlay_kwargs = {'resample': True}
+            overlay_kwargs = {"resample": True}
         else:
             overlay_kwargs = {}
 
@@ -177,17 +193,25 @@ class Overlay:
                 _overlay_bbox.append(gistools.get_bbox_intersection(bbox, overlaybbox))
 
             _bbox_list = [_base_bbox] + _overlay_bbox
-            err1 = (f"{Fore.RED} WARNING! Provided bbox is outside the bounds of the base and/or "
-                    f"overlay images. Using the maximal common bounds of the images instead.")
-            err2 = (f'{Fore.RED} WARNING! Provided bbox only overlaps partially with the base and/or'
-                    f' overlay images. Final images will be smaller than expected.')
-            err3 = (f'{Fore.RED} WARNING! Provided bbox does not overlap with all overlay sets. Using maximal '
-                              f'common bounds of the images instead.')
+            err1 = (
+                f"{Fore.RED} WARNING! Provided bbox is outside the bounds of the base and/or "
+                f"overlay images. Using the maximal common bounds of the images instead."
+            )
+            err2 = (
+                f"{Fore.RED} WARNING! Provided bbox only overlaps partially with the base and/or"
+                f" overlay images. Final images will be smaller than expected."
+            )
+            err3 = (
+                f"{Fore.RED} WARNING! Provided bbox does not overlap with all overlay sets. Using maximal "
+                f"common bounds of the images instead."
+            )
 
             if not all([x == bbox for x in _bbox_list]):
                 if any([x is None for x in _bbox_list]):
                     print(err1)
-                    bbox = gistools.get_max_bbox(self.base_bbox_latlon, self.overlay_bbox_latlon)
+                    bbox = gistools.get_max_bbox(
+                        self.base_bbox_latlon, self.overlay_bbox_latlon
+                    )
                 else:
                     print(err2)
                     bbox1 = gistools.get_bbox_intersection(bbox, _base_bbox)
@@ -195,14 +219,20 @@ class Overlay:
                         bbox1 = gistools.get_bbox_intersection(bbox1, ovbbox)
                     if not bbox1:
                         print(err3)
-                        bbox = gistools.get_max_bbox(self.base_bbox_latlon, self.overlay_bbox_latlon)
+                        bbox = gistools.get_max_bbox(
+                            self.base_bbox_latlon, self.overlay_bbox_latlon
+                        )
                     else:
                         bbox = bbox1
         elif bbox and not self.base_is_geotiff:
-            print(f'{Fore.RED} WARNING! Simple image(s) provided as base. Overlay images are assumed to match the '
-                  f'lat/lon bounds of the base image(s). For most accurate results, provide geotiff(s) for base set.')
+            print(
+                f"{Fore.RED} WARNING! Simple image(s) provided as base. Overlay images are assumed to match the "
+                f"lat/lon bounds of the base image(s). For most accurate results, provide geotiff(s) for base set."
+            )
         else:
-            bbox = gistools.get_max_bbox(self.base_bbox_latlon, self.overlay_bbox_latlon)
+            bbox = gistools.get_max_bbox(
+                self.base_bbox_latlon, self.overlay_bbox_latlon
+            )
 
         # If user does not provide an output CRS then try to use the base image CRS first; if that isn't
         # available (e.g. due to pngs being used for the base image) then default to the CRS of the first
@@ -216,23 +246,27 @@ class Overlay:
         # Reproject base and overlay images if necessary to match the specified output CRS
         if self.base_is_geotiff:
             if self.base_crs != out_crs:
-                print(f'{Fore.RED} WARNING! Projection of base image(s) does not match the output CRS.'
-                      f' Converting...')
-                for f in tqdm(self.baseimgfiles, desc='Image Number: ', colour='blue'):
+                print(
+                    f"{Fore.RED} WARNING! Projection of base image(s) does not match the output CRS."
+                    f" Converting..."
+                )
+                for f in tqdm(self.baseimgfiles, desc="Image Number: ", colour="blue"):
                     gistools.reproject(f, out_crs)
-                print(f'{Fore.RED} Done!')
+                print(f"{Fore.RED} Done!")
 
         for i, overlay in enumerate(self.overlayimgfiles):
             if self.overlay_crs[i] != out_crs:
-                print(f'{Fore.RED} WARNING! Projection of overlay images at index {str(i)} does not match the'
-                      f' output CRS. Converting...')
-                for f in tqdm(overlay, desc='Image Number: ', colour='blue'):
+                print(
+                    f"{Fore.RED} WARNING! Projection of overlay images at index {str(i)} does not match the"
+                    f" output CRS. Converting..."
+                )
+                for f in tqdm(overlay, desc="Image Number: ", colour="blue"):
                     gistools.reproject(f, out_crs)
-                print(f'{Fore.RED} Done!')
+                print(f"{Fore.RED} Done!")
 
         # Transform bbox coordinates if necessary to match output CRS
-        if out_crs != 'EPSG:4326':
-            outbbox = gistools.transform_bbox(bbox, 'EPSG:4326', out_crs)
+        if out_crs != "EPSG:4326":
+            outbbox = gistools.transform_bbox(bbox, "EPSG:4326", out_crs)
         else:
             outbbox = bbox
 
@@ -240,10 +274,12 @@ class Overlay:
         imgheight = res[1]
         imgwidth = res[0]
         if self.base_is_geotiff:
-            print(f'{Fore.GREEN} Cropping base and overlay images...', end='')
+            print(f"{Fore.GREEN} Cropping base and overlay images...", end="")
             if self.base_is_geotiff:
                 for f in self.baseimgfiles:
-                    gistools.crop_geotiff(f, outbbox, imgheight, imgwidth, opacity=1, **base_kwargs)
+                    gistools.crop_geotiff(
+                        f, outbbox, imgheight, imgwidth, opacity=1, **base_kwargs
+                    )
             else:
                 for f in self.baseimgfiles:
                     img = Image.open(f)
@@ -253,10 +289,16 @@ class Overlay:
 
             for i, overlay in enumerate(self.overlayimgfiles):
                 for f in overlay:
-                    gistools.crop_geotiff(f, outbbox, imgheight, imgwidth, opacity=overlay_opacities[i],
-                                          **overlay_kwargs)
+                    gistools.crop_geotiff(
+                        f,
+                        outbbox,
+                        imgheight,
+                        imgwidth,
+                        opacity=overlay_opacities[i],
+                        **overlay_kwargs,
+                    )
 
-        print(f'{Fore.GREEN} Done!')
+        print(f"{Fore.GREEN} Done!")
 
         # Final setup stuff
         if cumulative_colormap:
@@ -269,15 +311,15 @@ class Overlay:
             savepath.mkdir(exist_ok=True)
             overlaypaths = []
             for i in range(len(self.overlayimgfiles)):
-                op = savepath / f'overlay_{str(i)}'
+                op = savepath / f"overlay_{str(i)}"
                 op.mkdir(exist_ok=True)
                 overlaypaths.append(op)
 
         # Image generation loop
         basedone = False
         img_arr_last = []
-        print(f'{Fore.GREEN} Preparing overlay frames...')
-        for i in tqdm(range(0, self.framecount), desc='Frame Number: ', colour='green'):
+        print(f"{Fore.GREEN} Preparing overlay frames...")
+        for i in tqdm(range(0, self.framecount), desc="Frame Number: ", colour="green"):
 
             img_set = []
             img_arr = []
@@ -293,15 +335,21 @@ class Overlay:
 
             # Generate save name for image
             if self.base_is_reference:
-                if output_format == 'simple_image':
-                    svname = baseimgpath.stem + '.png'
-                elif output_format == 'geotiff':
-                    svname = baseimgpath.stem + '.tif'
+                if output_format == "simple_image":
+                    svname = baseimgpath.stem + ".png"
+                elif output_format == "geotiff":
+                    svname = baseimgpath.stem + ".tif"
             else:
-                if output_format == 'simple_image':
-                    svname = (self.overlayimgfiles[self.overlay_reference_idx][i].stem + '.png')
-                elif output_format == 'geotiff':
-                    svname = (self.overlayimgfiles[self.overlay_reference_idx][i].stem + '.tif')
+                if output_format == "simple_image":
+                    svname = (
+                        self.overlayimgfiles[self.overlay_reference_idx][i].stem
+                        + ".png"
+                    )
+                elif output_format == "geotiff":
+                    svname = (
+                        self.overlayimgfiles[self.overlay_reference_idx][i].stem
+                        + ".tif"
+                    )
 
             # Convert base geotiff to image or just open image if it is a png
             if self.base_is_geotiff:
@@ -311,17 +359,19 @@ class Overlay:
                         basedone = True
             else:
                 if not basedone:
-                    base_img = Image.open(baseimgpath).convert('RGBA')
+                    base_img = Image.open(baseimgpath).convert("RGBA")
                     if self.base_is_static:
                         basedone = True
 
             if not img_arr_last:
-                img_arr_last = [Image.new(mode='RGBA', size=(imgwidth, imgheight)) for x in img_set]
+                img_arr_last = [
+                    Image.new(mode="RGBA", size=(imgwidth, imgheight)) for x in img_set
+                ]
 
             for overlay, file in enumerate(img_set):
 
                 if save_overlays_gtiff:
-                    fname = overlaypaths[overlay] / (svname.split('.')[0] + '.tif')
+                    fname = overlaypaths[overlay] / (svname.split(".")[0] + ".tif")
                     shutil.copy(file, fname)
 
                 # Convert overlay geotiffs to images and resize
@@ -333,15 +383,23 @@ class Overlay:
                 if cumulative_colormap:
                     pixels = overlayimg.load()
                     fname = file.stem
-                    tstamp = gistools.get_timestamp(fname, self.overlay_tformats[overlay],
-                                                    self.overlays_tz[overlay])
-                    tnorm = (tstamp - self.overlay_start[overlay]).total_seconds() / self.overlay_deltas[overlay]
+                    tstamp = gistools.get_timestamp(
+                        fname, self.overlay_tformats[overlay], self.overlays_tz[overlay]
+                    )
+                    tnorm = (
+                        tstamp - self.overlay_start[overlay]
+                    ).total_seconds() / self.overlay_deltas[overlay]
                     color = cmap(tnorm)
 
                     for j in range(overlayimg.size[0]):
                         for k in range(overlayimg.size[1]):
                             if pixels[j, k][3] != 0:
-                                pixels[j, k] = (int(color[0] * 255), int(color[1] * 255), int(color[2] * 255), pixels[j, k][3])
+                                pixels[j, k] = (
+                                    int(color[0] * 255),
+                                    int(color[1] * 255),
+                                    int(color[2] * 255),
+                                    pixels[j, k][3],
+                                )
 
                 img_arr.append(overlayimg)
 
@@ -359,16 +417,16 @@ class Overlay:
                 if not outpath.exists():
                     outpath.mkdir()
 
-                if output_format == 'simple_image':
+                if output_format == "simple_image":
                     base_img_copy.save(str(outpath / svname))
-                elif output_format == 'geotiff':
+                elif output_format == "geotiff":
                     fname = gistools.image_to_geotiff(base_img_copy, bbox, out_crs)
                     shutil.copy(fname, str(outpath / svname))
                     os.remove(fname)
 
             img_arr_last = copy.deepcopy(img_arr)
 
-        print(f'{Fore.GREEN} Overlays Complete!')
+        print(f"{Fore.GREEN} Overlays Complete!")
 
         return
 
@@ -392,39 +450,45 @@ class Overlay:
         baseimgpath = Path(baseimgpath)
 
         if baseimgpath.is_dir():
-            gtiffs = list(baseimgpath.glob('*.tif')) + list(baseimgpath.glob('*.tiff'))
-            pngs = list(baseimgpath.glob('*.png'))
+            gtiffs = list(baseimgpath.glob("*.tif")) + list(baseimgpath.glob("*.tiff"))
+            pngs = list(baseimgpath.glob("*.png"))
         else:
-            if baseimgpath.suffix == '.tif' or baseimgpath.suffix == '.tiff':
+            if baseimgpath.suffix == ".tif" or baseimgpath.suffix == ".tiff":
                 gtiffs = [baseimgpath]
                 pngs = []
-            elif baseimgpath.suffix == '.png':
+            elif baseimgpath.suffix == ".png":
                 gtiffs = []
                 pngs = [baseimgpath]
             else:
-                print(f'{Fore.RED} ERROR: No valid image formats found. Exiting...')
+                print(f"{Fore.RED} ERROR: No valid image formats found. Exiting...")
                 sys.exit(0)
 
         # Configure timezones and filename formats for base image(s) and overlay images
         if base_timezone:
-            self.base_tz = base_timezone.pop('timezone', pytz.utc)
-            base_format = base_timezone.pop('filename format', None)
+            self.base_tz = base_timezone.pop("timezone", pytz.utc)
+            base_format = base_timezone.pop("filename format", None)
             if base_format:
                 self.base_tformat = gistools.time_format_str(base_format)
             else:
-                self.base_tformat = gistools.time_format_str('YYYY-MM-DD hh_mm_ss')
+                self.base_tformat = gistools.time_format_str("YYYY-MM-DD hh_mm_ss")
         else:
             self.base_tz = pytz.utc
-            self.base_tformat = gistools.time_format_str('YYYY-MM-DD hh_mm_ss')
+            self.base_tformat = gistools.time_format_str("YYYY-MM-DD hh_mm_ss")
 
         # Filter base image lists based on start and end time
         if len(gtiffs) > 1:
-            gtiffs = self._filter_img_list(gtiffs, start_time, end_time, self.base_tformat, self.base_tz)
+            gtiffs = self._filter_img_list(
+                gtiffs, start_time, end_time, self.base_tformat, self.base_tz
+            )
         if len(pngs) > 1:
-            pngs = self._filter_img_list(pngs, start_time, end_time, self.base_tformat, self.base_tz)
+            pngs = self._filter_img_list(
+                pngs, start_time, end_time, self.base_tformat, self.base_tz
+            )
 
         if gtiffs and pngs:
-            print(f'{Fore.RED} WARNING: Multiple image formats found in base image folder. Using geotiffs...')
+            print(
+                f"{Fore.RED} WARNING: Multiple image formats found in base image folder. Using geotiffs..."
+            )
             self.base_is_geotiff = True
             for file in gtiffs:
                 fname = editortools.copy_image(file, self.basepath)
@@ -440,7 +504,7 @@ class Overlay:
                 fname = editortools.copy_image(file, self.basepath)
                 self.baseimgfiles.append(fname)
         else:
-            print(f'{Fore.RED} ERROR: No valid image formats found. Exiting...')
+            print(f"{Fore.RED} ERROR: No valid image formats found. Exiting...")
             sys.exit(0)
 
         if len(self.baseimgfiles) == 1:
@@ -448,8 +512,10 @@ class Overlay:
         else:
             self.base_is_static = False
 
-        err2 = (f"{Fore.RED} ERROR: Dynamic base image requires timezone and/or"
-                f"filename format to be specified. Exiting...")
+        err2 = (
+            f"{Fore.RED} ERROR: Dynamic base image requires timezone and/or"
+            f"filename format to be specified. Exiting..."
+        )
 
         if not self.base_is_static and self.base_tformat is None:
             print(err2)
@@ -457,22 +523,39 @@ class Overlay:
 
         return
 
-    def _setup_overlay_imgs(self, overlaypaths, overlay_timezones, start_time, end_time):
+    def _setup_overlay_imgs(
+        self, overlaypaths, overlay_timezones, start_time, end_time
+    ):
         if overlay_timezones:
-            self.overlays_tz = overlay_timezones.pop('timezone', [pytz.utc] * len(overlaypaths))
-            overlays_format = overlay_timezones.pop('filename format', [None] * len(overlaypaths))
+            self.overlays_tz = overlay_timezones.pop(
+                "timezone", [pytz.utc] * len(overlaypaths)
+            )
+            overlays_format = overlay_timezones.pop(
+                "filename format", [None] * len(overlaypaths)
+            )
             if all(overlays_format):
-                self.overlay_tformats = [gistools.time_format_str(x) for x in overlays_format]
+                self.overlay_tformats = [
+                    gistools.time_format_str(x) for x in overlays_format
+                ]
             else:
-                self.overlay_tformats = [gistools.time_format_str('YYYY-MM-DD hh_mm_ss') for x in overlays_format]
+                self.overlay_tformats = [
+                    gistools.time_format_str("YYYY-MM-DD hh_mm_ss")
+                    for x in overlays_format
+                ]
         else:
             self.overlays_tz = [pytz.utc] * len(overlaypaths)
-            self.overlay_tformats = [gistools.time_format_str('YYYY-MM-DD hh_mm_ss')] * len(overlaypaths)
+            self.overlay_tformats = [
+                gistools.time_format_str("YYYY-MM-DD hh_mm_ss")
+            ] * len(overlaypaths)
 
-        err = (f"{Fore.RED} ERROR: Using the `overlay_timezones` parameter requires all or none of the timezones and/or" 
-               f"filename formats to be specified. Exiting..." )
+        err = (
+            f"{Fore.RED} ERROR: Using the `overlay_timezones` parameter requires all or none of the timezones and/or"
+            f"filename formats to be specified. Exiting..."
+        )
 
-        if len(self.overlays_tz) != len(overlaypaths) or len(self.overlay_tformats) != len(overlaypaths):
+        if len(self.overlays_tz) != len(overlaypaths) or len(
+            self.overlay_tformats
+        ) != len(overlaypaths):
             print()
             print(err)
             sys.exit(0)
@@ -481,11 +564,19 @@ class Overlay:
         self.overlayimgfiles = []
         for i, p in enumerate(overlaypaths):
             p = Path(p)
-            gtiffs = list(p.glob('*.tif')) + list(p.glob('*.tiff'))
+            gtiffs = list(p.glob("*.tif")) + list(p.glob("*.tiff"))
             if not gtiffs:
-                print(f'{Fore.RED} ERROR: No geotiffs found in overlay path {str(p)}. Exiting...')
+                print(
+                    f"{Fore.RED} ERROR: No geotiffs found in overlay path {str(p)}. Exiting..."
+                )
                 sys.exit(0)
-            gtiffs = self._filter_img_list(gtiffs, start_time, end_time, self.overlay_tformats[i], self.overlays_tz[i])
+            gtiffs = self._filter_img_list(
+                gtiffs,
+                start_time,
+                end_time,
+                self.overlay_tformats[i],
+                self.overlays_tz[i],
+            )
             row = []
             for file in gtiffs:
                 fname = editortools.copy_image(file, self.overlaypaths[i])
@@ -498,29 +589,43 @@ class Overlay:
         self.overlay_start = []
         self.overlay_end = []
         for i, overlay in enumerate(self.overlayimgfiles):
-            self.overlay_start.append(gistools.get_timestamp(overlay[0].stem, self.overlay_tformats[i],
-                                                          self.overlays_tz[i]))
+            self.overlay_start.append(
+                gistools.get_timestamp(
+                    overlay[0].stem, self.overlay_tformats[i], self.overlays_tz[i]
+                )
+            )
         for i, overlay in enumerate(self.overlayimgfiles):
-            self.overlay_end.append(gistools.get_timestamp(overlay[-1].stem, self.overlay_tformats[i],
-                                                        self.overlays_tz[i]))
-        self.overlay_deltas = [(tend - tstart).total_seconds() for tend, tstart in
-                               zip(self.overlay_end, self.overlay_start)]
+            self.overlay_end.append(
+                gistools.get_timestamp(
+                    overlay[-1].stem, self.overlay_tformats[i], self.overlays_tz[i]
+                )
+            )
+        self.overlay_deltas = [
+            (tend - tstart).total_seconds()
+            for tend, tstart in zip(self.overlay_end, self.overlay_start)
+        ]
 
         self.trange_norms = [(np.linspace(1, x, 1) / x) for x in self.overlay_deltas]
 
         # Calculate interval between images in each overlay path
         overlay_intervals = []
         for i, overlay in enumerate(self.overlayimgfiles):
-            overlay_intervals.append(self._calculate_interval((overlay[0], overlay[1]),
-                                                              (self.overlay_tformats[i],),
-                                                               (self.overlays_tz[i],)))
+            overlay_intervals.append(
+                self._calculate_interval(
+                    (overlay[0], overlay[1]),
+                    (self.overlay_tformats[i],),
+                    (self.overlays_tz[i],),
+                )
+            )
 
         # Calculate interval between base images, if applicable
         base_interval = 0
         if not self.base_is_static:
-            base_interval = self._calculate_interval((self.baseimgfiles[0], self.baseimgfiles[1]),
-                                                     (self.base_tformat,),
-                                                     (self.base_tz,))
+            base_interval = self._calculate_interval(
+                (self.baseimgfiles[0], self.baseimgfiles[1]),
+                (self.base_tformat,),
+                (self.base_tz,),
+            )
             all_intervals = overlay_intervals + [base_interval]
         else:
             all_intervals = overlay_intervals
@@ -555,13 +660,17 @@ class Overlay:
             if len(overlay) < self.framecount:
                 for i, file in enumerate(reffiles):
                     if self.base_is_reference:
-                        closest_idx = self._get_closest_time((file.stem, self.base_tformat),
-                                                            ([x.stem for x in overlay], self.overlay_tformats[j]),
-                                                             tz=(self.base_tz, self.overlays_tz[j]))
+                        closest_idx = self._get_closest_time(
+                            (file.stem, self.base_tformat),
+                            ([x.stem for x in overlay], self.overlay_tformats[j]),
+                            tz=(self.base_tz, self.overlays_tz[j]),
+                        )
                     else:
-                        closest_idx = self._get_closest_time((file.stem, self.overlay_tformats[refidx]),
-                                                             ([x.stem for x in overlay], self.overlay_tformats[j]),
-                                                             tz=(self.overlays_tz[refidx], self.overlays_tz[j]))
+                        closest_idx = self._get_closest_time(
+                            (file.stem, self.overlay_tformats[refidx]),
+                            ([x.stem for x in overlay], self.overlay_tformats[j]),
+                            tz=(self.overlays_tz[refidx], self.overlays_tz[j]),
+                        )
 
                     tmp_list.append(overlay[closest_idx])
 
@@ -576,28 +685,36 @@ class Overlay:
             if len(self.baseimgfiles) < self.framecount:
                 new_base_list = []
                 for i, file in enumerate(self.baseimgfiles):
-                    closest_idx = self._get_closest_time((file.stem, self.base_tformat),
-                                                         ([x.stem for x in reffiles], self.overlay_tformats[refidx]),
-                                                         tz=(self.base_tz, self.overlays_tz[refidx]))
+                    closest_idx = self._get_closest_time(
+                        (file.stem, self.base_tformat),
+                        ([x.stem for x in reffiles], self.overlay_tformats[refidx]),
+                        tz=(self.base_tz, self.overlays_tz[refidx]),
+                    )
                     new_base_list.append(self.baseimgfiles[closest_idx])
                 self.baseimgfiles = new_base_list
         return
 
-    def _get_time(self, mode='base'):
-        if mode == 'base':
+    def _get_time(self, mode="base"):
+        if mode == "base":
             _times = []
             for f in self.baseimgfiles:
-                _times.append(gistools.get_timestamp(f, self.base_tformat, tz=self.base_tz))
+                _times.append(
+                    gistools.get_timestamp(f, self.base_tformat, tz=self.base_tz)
+                )
             _times.sort()
             start = _times[0]
             end = _times[-1]
-        elif mode == 'overlay':
+        elif mode == "overlay":
             _start = []
             _end = []
             _times = []
             for i, overlay in enumerate(self.overlayimgfiles):
                 for f in overlay:
-                    _times.append(gistools.get_timestamp(f, self.overlay_tformats[i], tz=self.overlays_tz[i]))
+                    _times.append(
+                        gistools.get_timestamp(
+                            f, self.overlay_tformats[i], tz=self.overlays_tz[i]
+                        )
+                    )
                 _times.sort()
                 _start.append(_times[0])
                 _end.append(_times[-1])
@@ -613,11 +730,15 @@ class Overlay:
     @staticmethod
     def _bbox_error_msg(self, coord, index=None):
         if not index:
-            err = (f'{Fore.RED} WARNING! Provided bbox {coord} extent is beyond the bounds of the base image. Using '
-                   f'image bounds instead.')
+            err = (
+                f"{Fore.RED} WARNING! Provided bbox {coord} extent is beyond the bounds of the base image. Using "
+                f"image bounds instead."
+            )
         else:
-            err = (f'{Fore.RED} WARNING! Provided bbox {coord} extent is beyond the bounds of the overlay image at '
-                   f'index {str(index)}. Using image bounds instead.')
+            err = (
+                f"{Fore.RED} WARNING! Provided bbox {coord} extent is beyond the bounds of the overlay image at "
+                f"index {str(index)}. Using image bounds instead."
+            )
         return err
 
     @staticmethod
@@ -735,7 +856,7 @@ class Overlay:
 
         closest_time = min(src_times, key=lambda d: abs(d - target_time))
         idx = src_times.index(closest_time)
-        #file = srcarray[idx]
+        # file = srcarray[idx]
 
         return idx
 

@@ -1,6 +1,6 @@
 import os
 import json
-import pytz
+from pathlib import Path
 import shutil
 import sys
 import tempfile
@@ -13,18 +13,18 @@ import hashlib
 from importlib.resources import files
 from copy import deepcopy
 from datetime import datetime, timedelta
-from pathlib import Path
 
+import pytz
 import boto3
 import satpy
 import satpy.utils
 import botocore.exceptions
 import boto3.exceptions
+from botocore import UNSIGNED
+from botocore.config import Config
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from botocore import UNSIGNED
-from botocore.config import Config
 from PIL import Image
 from moviepy.editor import ImageSequenceClip
 from matplotlib import colormaps
@@ -79,14 +79,14 @@ class GoesBase:
             if "FDC" not in product:
                 self.product = product
                 print(
-                    f"{Fore.RED} WARNING - Product should be specified without the trailing \'F\' or \'C\' "
+                    f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' or 'C' "
                     f"indicating region."
                 )
             else:
                 if "FDCC" in product or "FDCF" in product:
                     self.product = product
                     print(
-                        f"{Fore.RED} WARNING - Product should be specified without the trailing \'F\' or \'C\' "
+                        f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' or 'C' "
                         f" indicating region."
                     )
                 else:
@@ -349,10 +349,10 @@ class GoesDownloader(GoesBase):
         @return: (dict) filenames
         """
         # Currently, the downloader can handle the ABI-L2-CMIP and ABI-L2-FDC products
-        if not scenename.startswith('Power') and not scenename.startswith('Temp'):
+        if not scenename.startswith("Power") and not scenename.startswith("Temp"):
             req_bands = self._get_scene_bands(scenename)
         else:
-            req_bands = ['FDC']
+            req_bands = ["FDC"]
 
         if self._scene_dict_ready:
             retdict = {}
@@ -402,12 +402,12 @@ class GoesDownloader(GoesBase):
         else:
             filtered_remote = self.remote_scene_files
 
-        #Currently, the downloader can handle the ABI-L2-CMIP and ABI-L2-FDC products
+        # Currently, the downloader can handle the ABI-L2-CMIP and ABI-L2-FDC products
         if scenename:
-            if not scenename.startswith('Power') and not scenename.startswith('Temp'):
+            if not scenename.startswith("Power") and not scenename.startswith("Temp"):
                 req_bands = self._get_scene_bands(scenename)
             else:
-                req_bands = ['FDC']
+                req_bands = ["FDC"]
         else:
             req_bands = filtered_remote.keys()
 
@@ -1167,7 +1167,9 @@ class GoesCompositor(GoesBase):
                             tstamp = pytz.utc.localize(tstamp)
                             suffix = "UTC"
 
-                        svname = tstamp.isoformat()[0:-6].replace("T", " ") + " " + suffix
+                        svname = (
+                            tstamp.isoformat()[0:-6].replace("T", " ") + " " + suffix
+                        )
                         svname = svname.replace(":", "_")
 
                     # Add coastlines to the scene using options stored in the instance
@@ -1190,19 +1192,26 @@ class GoesCompositor(GoesBase):
                     elif output_format == "geotiff":
                         svname += ".tif"
                         # These settings are specific to the ABI-L2-FDC product
-                        if scenename == 'Power' or scenename == 'Temp':
+                        if scenename == "Power" or scenename == "Temp":
                             img = to_image(new_scene[scenename])
 
-                            cmap = cm.Colormap((1, (1.0, 0.729, 0.729, 0.6)),
-                                               (10, (0.988, 0.51, 0.51, 0.6)),
-                                               (100, (0.988, 0.239, 0.239, 0.6)),
-                                               (200, (1.0, 0.0, 0.0, 0.6)))
-                            img.apply_pil(convert, output_mode='LA', fun_args='LA')
+                            cmap = cm.Colormap(
+                                (1, (1.0, 0.729, 0.729, 0.6)),
+                                (10, (0.988, 0.51, 0.51, 0.6)),
+                                (100, (0.988, 0.239, 0.239, 0.6)),
+                                (200, (1.0, 0.0, 0.0, 0.6)),
+                            )
+                            img.apply_pil(convert, output_mode="LA", fun_args="LA")
                             img.colorize(cmap)
                             img.rio_save(str(folder_path / svname))
                         else:
-                            new_scene.save_dataset(scenename, writer='geotiff', filename=str(folder_path / svname),
-                                                   keep_palette=True, **kwargs)
+                            new_scene.save_dataset(
+                                scenename,
+                                writer="geotiff",
+                                filename=str(folder_path / svname),
+                                keep_palette=True,
+                                **kwargs,
+                            )
 
                     with open(str(folder_path / "timestamps.csv"), "a") as f:
                         tstr = self._get_timestamp_from_filename(
@@ -1222,7 +1231,9 @@ class GoesCompositor(GoesBase):
 
         return folder_path
 
-    def set_coastlines_options(self, path=None, color=(235, 235, 71), res="h", width=2, **kwargs):
+    def set_coastlines_options(
+        self, path=None, color=(235, 235, 71), res="h", width=2, **kwargs
+    ):
         if path:
             self.coastoptions["coast_dir"] = path
         self.coastoptions["color"] = color
@@ -1926,4 +1937,3 @@ class GoesAnimator(GoesBase):
                     )
 
         return
-

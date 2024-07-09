@@ -14,14 +14,17 @@ from rasterio.coords import BoundingBox
 from rasterio.enums import Resampling
 from shapely.geometry import box
 from PIL import Image
+
 try:
     from osgeo import gdal
 except ImportError:
-    print(f"{Fore.RED} WARNING! Could not import osgeo package. The resize_geotiff function will be unusable.")
+    print(
+        f"{Fore.RED} WARNING! Could not import osgeo package. The resize_geotiff function will be unusable."
+    )
 
 
 def get_crs(file):
-    with rasterio.open(file, 'r') as ds:
+    with rasterio.open(file, "r") as ds:
         crs = ds.crs
     return crs
 
@@ -67,12 +70,12 @@ def image_to_geotiff(img, bbox, outcrs, outpath=None):
     b = imgarr[:, :, 2]
 
     # Convert bbox from lat/lon to outcrs
-    bboxout = transform_bbox(bbox, 'EPSG:4326', outcrs)
+    bboxout = transform_bbox(bbox, "EPSG:4326", outcrs)
 
     # Create new raster
     _transform = from_bounds(*bboxout, width, height)
 
-    if img.mode == 'RGB':
+    if img.mode == "RGB":
         count = 3
         imgbands = [r, g, b]
     else:
@@ -81,20 +84,24 @@ def image_to_geotiff(img, bbox, outcrs, outpath=None):
         imgbands = [r, g, b, a]
 
     kwargs = {}
-    kwargs.update({'count': count,
-                   'crs': outcrs,
-                   'transform': _transform,
-                   'width': width,
-                   'height': height,
-                   'dtype': np.uint8})
+    kwargs.update(
+        {
+            "count": count,
+            "crs": outcrs,
+            "transform": _transform,
+            "width": width,
+            "height": height,
+            "dtype": np.uint8,
+        }
+    )
 
     if not outpath:
-        tmp_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        tmp_file = tempfile.NamedTemporaryFile(mode="w", delete=False)
         _file = tmp_file.name
     else:
         _file = outpath
 
-    with rasterio.open(_file, 'w', driver='GTiff', **kwargs) as dst:
+    with rasterio.open(_file, "w", driver="GTiff", **kwargs) as dst:
         for band, src in enumerate(imgbands, start=1):
             dst.write_band(band, src)
 
@@ -116,11 +123,16 @@ def resize_geotiff(file, width, height, resample=False, delete=True):
     else:
         _path = file
 
-    outpath = _path.parent / (_path.stem + '_resize' + _path.suffix)
+    outpath = _path.parent / (_path.stem + "_resize" + _path.suffix)
     inds = gdal.OpenEx(str(_path))
     if resample:
-        outds = gdal.Translate(str(outpath), inds, width=width, height=height,
-                               resampleAlg=gdal.GRA_NearestNeighbour)
+        outds = gdal.Translate(
+            str(outpath),
+            inds,
+            width=width,
+            height=height,
+            resampleAlg=gdal.GRA_NearestNeighbour,
+        )
     else:
         outds = gdal.Translate(str(outpath), inds, width=width, height=height)
 
@@ -142,7 +154,7 @@ def resize_image(file, width, height, resample=False, delete=True):
     @param delete: (bool) delete input file and replace with resized output file
     @return: (str) path to resized image
     """
-    outpath = file.parent / (file.stem + '_tmp' + file.suffix)
+    outpath = file.parent / (file.stem + "_tmp" + file.suffix)
     img = Image.open(str(file))
     if resample:
         img = img.resize((width, height), resample=Image.NEAREST)
@@ -162,19 +174,31 @@ def geotiff_to_image(srctif):
     @param srctif: (str) path to source tif
     @return: (PIL.Image obj) output image
     """
-    ds = rasterio.open(str(srctif), 'r')
+    ds = rasterio.open(str(srctif), "r")
     bands = ds.indexes
     data = ds.read(bands)
-    _transform = rasterio.transform.from_bounds(0, 0, 0, 0, data.shape[2], data.shape[1])
+    _transform = rasterio.transform.from_bounds(
+        0, 0, 0, 0, data.shape[2], data.shape[1]
+    )
     crs = get_crs(srctif)
 
-    dstimg = srctif.parent / (srctif.stem + '.png')
-    with rasterio.open(dstimg, 'w', driver='PNG', width=data.shape[2],
-                       height=data.shape[1], count=len(bands), dtype=data.dtype, nodata=0,
-                       transform=_transform, crs=crs, format='PNG') as dst:
+    dstimg = srctif.parent / (srctif.stem + ".png")
+    with rasterio.open(
+        dstimg,
+        "w",
+        driver="PNG",
+        width=data.shape[2],
+        height=data.shape[1],
+        count=len(bands),
+        dtype=data.dtype,
+        nodata=0,
+        transform=_transform,
+        crs=crs,
+        format="PNG",
+    ) as dst:
         dst.write(data, indexes=bands)
 
-    img = Image.open(dstimg).convert('RGBA')
+    img = Image.open(dstimg).convert("RGBA")
     return img
 
 
@@ -206,7 +230,7 @@ def get_shape_img(file):
     return w, h
 
 
-def reproject(file, out_crs='EPSG:4326'):
+def reproject(file, out_crs="EPSG:4326"):
     """
     Reproject a geotiff to specified CRS. File is modified in-place.
     @param file: (str) path to geotiff
@@ -217,31 +241,32 @@ def reproject(file, out_crs='EPSG:4326'):
     with rasterio.open(str(file)) as src:
 
         if isinstance(out_crs, str):
-            _transform, width, height = rwarp.calculate_default_transform(src.crs, {'init': out_crs}, src.width,
-                                                                          src.height,
-                                                                          *src.bounds)
+            _transform, width, height = rwarp.calculate_default_transform(
+                src.crs, {"init": out_crs}, src.width, src.height, *src.bounds
+            )
         else:
-            _transform, width, height = rwarp.calculate_default_transform(src.crs, out_crs, src.width,
-                                                                          src.height,
-                                                                          *src.bounds)
+            _transform, width, height = rwarp.calculate_default_transform(
+                src.crs, out_crs, src.width, src.height, *src.bounds
+            )
 
         kwargs = src.meta.copy()
-        kwargs.update({'crs': out_crs,
-                       'transform': _transform,
-                       'width': width,
-                       'height': height})
+        kwargs.update(
+            {"crs": out_crs, "transform": _transform, "width": width, "height": height}
+        )
 
-        _file = file.parent / (file.stem + '_tmp' + file.suffix)
+        _file = file.parent / (file.stem + "_tmp" + file.suffix)
 
-        with rasterio.open(str(_file), 'w', **kwargs) as dst:
+        with rasterio.open(str(_file), "w", **kwargs) as dst:
             for i in range(1, src.count + 1):
-                rwarp.reproject(rasterio.band(src, i),
-                                destination=rasterio.band(dst, i),
-                                src_transform=src.transform,
-                                src_crs=src.crs,
-                                dst_transform=_transform,
-                                dst_crs=out_crs,
-                                resampling=Resampling.nearest)
+                rwarp.reproject(
+                    rasterio.band(src, i),
+                    destination=rasterio.band(dst, i),
+                    src_transform=src.transform,
+                    src_crs=src.crs,
+                    dst_transform=_transform,
+                    dst_crs=out_crs,
+                    resampling=Resampling.nearest,
+                )
 
     os.remove(file)
     os.rename(_file, file)
@@ -271,7 +296,7 @@ def crop_geotiff(file, bbox, height, width, resample=False, opacity=1, delete=Tr
     @param delete: (bool) delete input file and replace with resized output file
     @return:
     """
-    svname = file.parent / (file.stem + '_crop' + file.stem)
+    svname = file.parent / (file.stem + "_crop" + file.stem)
 
     # src = rasterio.open(str(file))
     with rasterio.open(str(file)) as src:
@@ -292,26 +317,34 @@ def crop_geotiff(file, bbox, height, width, resample=False, opacity=1, delete=Tr
             newbounds = bbox
             newwidth = width
             newheight = height
-            dsttransform = rasterio.transform.from_bounds(*newbounds, newwidth, newheight)
+            dsttransform = rasterio.transform.from_bounds(
+                *newbounds, newwidth, newheight
+            )
             kwargs = src.meta.copy()
-            kwargs.update({'crs': src.crs,
-                           'transform': dsttransform,
-                           'width': newwidth,
-                           'height': newheight})
+            kwargs.update(
+                {
+                    "crs": src.crs,
+                    "transform": dsttransform,
+                    "width": newwidth,
+                    "height": newheight,
+                }
+            )
 
             if resample:
-                kwargs = {'resampling': Resampling.nearest}
+                kwargs = {"resampling": Resampling.nearest}
             else:
                 kwargs = {}
 
-            with rasterio.open(str(svname), 'w', **kwargs) as final:
+            with rasterio.open(str(svname), "w", **kwargs) as final:
                 for i in range(1, src.count + 1):
-                    rwarp.reproject(rasterio.band(src, i),
-                                    destination=rasterio.band(final, i),
-                                    src_tansform=src.transform,
-                                    dst_transform=dsttransform,
-                                    dst_crs=src.crs,
-                                    **kwargs)
+                    rwarp.reproject(
+                        rasterio.band(src, i),
+                        destination=rasterio.band(final, i),
+                        src_tansform=src.transform,
+                        dst_transform=dsttransform,
+                        dst_crs=src.crs,
+                        **kwargs,
+                    )
 
     if delete:
         os.remove(str(file))
@@ -328,7 +361,7 @@ def adjust_alpha(img, alpha):
     """
     imgarr = np.array(img, dtype=np.uint8)
     np.place(imgarr[:, :, 3], imgarr[:, :, 3] > 0, int(alpha * 255))
-    retimg = Image.fromarray(imgarr, 'RGBA')
+    retimg = Image.fromarray(imgarr, "RGBA")
 
     return retimg
 
@@ -379,7 +412,7 @@ def trim_img_border(img):
 
     newarr = np.dstack((r, b, g))
 
-    retimg = Image.fromarray(newarr, 'RGB')
+    retimg = Image.fromarray(newarr, "RGB")
     return retimg
 
 
@@ -395,27 +428,29 @@ def get_timestamp(file, tformatdict, tz=pytz.utc):
     """
 
     kwargs = {}
-    if tformatdict['Y'][0] is not None and tformatdict['Y'][1] is not None:
-        year = int(file[tformatdict['Y'][0]:tformatdict['Y'][1]])
+    if tformatdict["Y"][0] is not None and tformatdict["Y"][1] is not None:
+        year = int(file[tformatdict["Y"][0] : tformatdict["Y"][1]])
     else:
         year = None
-    if tformatdict['M'][0] is not None and tformatdict['M'][1] is not None:
-        month = int(file[tformatdict['M'][0]:tformatdict['M'][1]])
+    if tformatdict["M"][0] is not None and tformatdict["M"][1] is not None:
+        month = int(file[tformatdict["M"][0] : tformatdict["M"][1]])
     else:
         month = None
-    if tformatdict['D'][0] is not None and tformatdict['D'][1] is not None:
-        day = int(file[tformatdict['D'][0]:tformatdict['D'][1]])
+    if tformatdict["D"][0] is not None and tformatdict["D"][1] is not None:
+        day = int(file[tformatdict["D"][0] : tformatdict["D"][1]])
     else:
         day = None
-    if tformatdict['h'][0] and tformatdict['h'][1]:
-        kwargs['hour'] = int(file[tformatdict['h'][0]:tformatdict['h'][1]])
-    if tformatdict['m'][0] and tformatdict['m'][1]:
-        kwargs['minute'] = int(file[tformatdict['m'][0]:tformatdict['m'][1]])
-    if tformatdict['s'][0] and tformatdict['s'][1]:
-        kwargs['second'] = int(file[tformatdict['s'][0]:tformatdict['s'][1]])
+    if tformatdict["h"][0] and tformatdict["h"][1]:
+        kwargs["hour"] = int(file[tformatdict["h"][0] : tformatdict["h"][1]])
+    if tformatdict["m"][0] and tformatdict["m"][1]:
+        kwargs["minute"] = int(file[tformatdict["m"][0] : tformatdict["m"][1]])
+    if tformatdict["s"][0] and tformatdict["s"][1]:
+        kwargs["second"] = int(file[tformatdict["s"][0] : tformatdict["s"][1]])
 
     if not year or not month or not day:
-        print(f'{Fore.RED} ERROR: Could not extract time from provided filename {file}. Check time format string.')
+        print(
+            f"{Fore.RED} ERROR: Could not extract time from provided filename {file}. Check time format string."
+        )
         t = None
 
     t = tz.localize(datetime(year, month, day, **kwargs))
@@ -430,7 +465,7 @@ def time_format_str(instr):
     @return: (dict) time format dict
     """
     if instr:
-        chars = ['Y', 'M', 'D', 'h', 'm', 's']
+        chars = ["Y", "M", "D", "h", "m", "s"]
         start_idxs = []
         end_idxs = []
         start_done = False
@@ -472,38 +507,40 @@ def replace_file_timezone(file, in_tz, out_tz, out_abbr):
     @return: None
     """
     if isinstance(file, str):
-        tstr = file.split('\\')[-1].split('.')[0]
-        svpath = '\\'.join(file.split('\\')[0:-1])
-        svpath = svpath.rstrip('\\') + '\\'
+        tstr = file.split("\\")[-1].split(".")[0]
+        svpath = "\\".join(file.split("\\")[0:-1])
+        svpath = svpath.rstrip("\\") + "\\"
     elif isinstance(file, Path):
         tstr = file.stem
         svpath = file.parent
     else:
-        print(f'{Fore.RED} ERROR: File path must be provided as a string or Path object')
+        print(
+            f"{Fore.RED} ERROR: File path must be provided as a string or Path object"
+        )
         return
 
     if not isinstance(in_tz, pytz.BaseTzInfo):
-        print(f'{Fore.RED} ERROR: Timezone must be provided as a pytz timezone object.')
+        print(f"{Fore.RED} ERROR: Timezone must be provided as a pytz timezone object.")
         return
     if not isinstance(out_tz, pytz.BaseTzInfo):
-        print(f'{Fore.RED} ERROR: Timezone must be provided as a pytz timezone object.')
+        print(f"{Fore.RED} ERROR: Timezone must be provided as a pytz timezone object.")
         return
 
-    _s1 = tstr.split(' ')[0]
-    _s2 = tstr.split(' ')[1]
-    year = int(_s1.split('-')[0])
-    month = int(_s1.split('-')[1])
-    day = int(_s1.split('-')[2])
-    hr = int(_s2.split('_')[0])
-    _min = int(_s2.split('_')[1])
-    sec = int(_s2.split('_')[2])
+    _s1 = tstr.split(" ")[0]
+    _s2 = tstr.split(" ")[1]
+    year = int(_s1.split("-")[0])
+    month = int(_s1.split("-")[1])
+    day = int(_s1.split("-")[2])
+    hr = int(_s2.split("_")[0])
+    _min = int(_s2.split("_")[1])
+    sec = int(_s2.split("_")[2])
 
     t = datetime(year, month, day, hour=hr, minute=_min, second=sec)
     t2 = in_tz.localize(t)
     t3 = t2.astimezone(out_tz)
     newtstr = t3.isoformat()
-    newtstr = newtstr.replace('T', ' ').replace(':', '_')
-    newtstr = newtstr[0:-6] + ' ' + out_abbr
+    newtstr = newtstr.replace("T", " ").replace(":", "_")
+    newtstr = newtstr[0:-6] + " " + out_abbr
 
     if isinstance(file, str):
         fname = svpath + newtstr
@@ -512,6 +549,7 @@ def replace_file_timezone(file, in_tz, out_tz, out_abbr):
 
     os.rename(file, fname)
     return
+
 
 # def get_timestamp(file, tformatdict, tz=pytz.utc):
 #     """
@@ -592,15 +630,21 @@ def get_bbox_intersection(user_bbox, img_bbox):
     @return: (list) bbox intersection
     """
     if user_bbox and img_bbox:
-        user_bbox_adj = box(user_bbox[0] + 180, user_bbox[1] + 90, user_bbox[2] + 180, user_bbox[3] + 90)
-        img_bbox_adj = box(img_bbox[0] + 180, img_bbox[1] + 90, img_bbox[2] + 180, img_bbox[3] + 90)
+        user_bbox_adj = box(
+            user_bbox[0] + 180, user_bbox[1] + 90, user_bbox[2] + 180, user_bbox[3] + 90
+        )
+        img_bbox_adj = box(
+            img_bbox[0] + 180, img_bbox[1] + 90, img_bbox[2] + 180, img_bbox[3] + 90
+        )
         intersection = img_bbox_adj.intersection(user_bbox_adj)
 
         if intersection.is_empty:
             ret = None
         else:
             _bounds = intersection.bounds
-            ret = BoundingBox(_bounds[0] - 180, _bounds[1] - 90, _bounds[2] - 180, _bounds[3] - 90)
+            ret = BoundingBox(
+                _bounds[0] - 180, _bounds[1] - 90, _bounds[2] - 180, _bounds[3] - 90
+            )
     else:
         ret = None
 

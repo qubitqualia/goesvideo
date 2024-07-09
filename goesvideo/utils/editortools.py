@@ -125,7 +125,7 @@ def add_text(img, **kwargs):
 
     img.paste(txtimg, (int(x), int(y)), txtimg)
 
-    img = img.convert('RGB')
+    img = img.convert("RGB")
     return img
 
 
@@ -484,14 +484,14 @@ def modify_image(img, **kwargs):
         img = img.resize((res[0], res[1]))
 
     if triangle:
-        xy = triangle['coords']
-        fill = triangle.pop('fill', None)
-        outline = triangle.pop('outline', None)
-        width = triangle.pop('width', 1)
+        xy = triangle["coords"]
+        fill = triangle.pop("fill", None)
+        outline = triangle.pop("outline", None)
+        width = triangle.pop("width", 1)
         img = add_triangle(img, xy, fill=fill, outline=outline, width=width)
 
     kwargs = kwargs_copy
-    img.convert('RGB')
+    img.convert("RGB")
     return img
 
 
@@ -648,11 +648,13 @@ class GoesClip(VideoFileClip):
 
         if not freeze:
             clip = self.fl(
-                lambda get_frame, t: get_frame(t)
-                if tstart >= t or t >= tend
-                else np.array(
-                    modify_image(Image.fromarray(get_frame(t)), **kwargs),
-                    dtype=np.uint8,
+                lambda get_frame, t: (
+                    get_frame(t)
+                    if tstart >= t or t >= tend
+                    else np.array(
+                        modify_image(Image.fromarray(get_frame(t)), **kwargs),
+                        dtype=np.uint8,
+                    )
                 )
             )
         else:
@@ -661,20 +663,27 @@ class GoesClip(VideoFileClip):
                 if kwargs:
                     img = modify_image(img, **kwargs)
                 nparr = np.array(img, dtype=np.uint8)
-                frzclip = frz.freeze(self, t=t_edit_start, freeze_duration=t_edit_end-t_edit_start)
+                frzclip = frz.freeze(
+                    self, t=t_edit_start, freeze_duration=t_edit_end - t_edit_start
+                )
                 clip = frzclip.fl(
                     lambda get_frame, t: nparr if tstart <= t <= tend else get_frame(t)
                 )
             else:
-                if self.size[0] != freeze_img.size[0] or self.size[1] != freeze_img.size[1]:
+                if (
+                    self.size[0] != freeze_img.size[0]
+                    or self.size[1] != freeze_img.size[1]
+                ):
                     kwargs["res"] = (self.size[0], self.size[1])
 
                 if kwargs:
                     freeze_img = modify_image(freeze_img, **kwargs)
 
-                freeze_img = freeze_img.convert('RGB')
+                freeze_img = freeze_img.convert("RGB")
                 nparr = np.array(freeze_img, dtype=np.uint8)
-                frzclip = frz.freeze(self, t=t_edit_start, freeze_duration=t_edit_end - t_edit_start)
+                frzclip = frz.freeze(
+                    self, t=t_edit_start, freeze_duration=t_edit_end - t_edit_start
+                )
                 clip = frzclip.fl(
                     lambda get_frame, t: nparr if tstart <= t <= tend else get_frame(t)
                 )
