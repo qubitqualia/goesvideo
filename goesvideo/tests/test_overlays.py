@@ -1,20 +1,31 @@
+import os
+import shutil
 import tempfile
 from pathlib import Path
-from goesvideo.addons.addons import Overlay
 from importlib.resources import files as importfiles
-import shutil
+
 import pytz
 import matplotlib.cm as cm
+from PIL import Image
+
+from goesvideo.addons.addons import Overlay
+
 
 def test_overlays():
+
+    # Toggle display of output images
+    # Note that this will open a large number of
+    # images for viewing
+    show_images = True
+
     # Create temp folders
     tmpfolder = tempfile.TemporaryDirectory()
     tmppath = Path(tmpfolder.name)
-    subpath = tmppath / "Top Level"
+    subpath = tmppath / "Top_Level"
     basepath = tmppath / "Base_Images"
     overlaypath = tmppath / "Overlay_Images_1"
-    outputpath = tmppath / "Final Output"
-    gtiffpath = tmppath / "Gtiff Output"
+    outputpath = tmppath / "Final_Output"
+    gtiffpath = tmppath / "Gtiff_Output"
     basepath.mkdir(exist_ok=True)
     overlaypath.mkdir(exist_ok=True)
     outputpath.mkdir(exist_ok=True)
@@ -81,4 +92,28 @@ def test_overlays():
     ol1.create_overlays(str(outputpath / 'test9a'), output_format='geotiff')
     ol2.create_overlays(str(outputpath / 'test9b'), output_format='geotiff')
 
-    print('hello')
+    # Assertions to check files exist in every subdirectory
+    subpaths = ['test1a', 'test1b', 'test2a', 'test2b', 'test3a', 'test3b', 'test4a', 'test4b',
+                'test5a', 'test5b', 'test6a', 'test6b', 'test7a', 'test7b', 'test8a', 'test8b',
+                'test9a', 'test9b']
+
+    for sp in subpaths:
+        assert any((outputpath / sp).iterdir())
+
+    # Show images if toggled on
+    if show_images:
+        for sp in subpaths:
+            pngfile = list((outputpath / sp).glob('*.png'))
+            tiffile = list((outputpath / sp).glob('*.tif'))
+            if pngfile:
+                Image.open(pngfile[0]).show()
+            if tiffile:
+                os.rename(tiffile[0], str(tiffile[0]).split('.')[0] + '.tiff')
+                tf = list((outputpath / sp).glob('*.tiff'))
+                Image.open(tf[0]).show()
+
+
+
+
+
+

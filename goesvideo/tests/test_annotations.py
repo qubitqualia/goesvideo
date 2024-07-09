@@ -1,10 +1,12 @@
-from pathlib import Path
-from PIL import Image
-from goesvideo import utils
-from importlib.resources import files as importfiles
-import pytz
 import sys
+from pathlib import Path
+from importlib.resources import files as importfiles
+
+from PIL import Image
+import pytz
 import pytest
+
+from goesvideo.utils import editortools
 
 
 def test_annotations():
@@ -29,7 +31,7 @@ def test_annotations():
         "fontsize": 5,
         "opacity": 0.7,
     }
-    img = utils.add_timestamps(baseimg, "2023-10-01 00:00:00", **kwargs)
+    img = editortools.add_timestamps(baseimg, "2023-10-01 00:00:00", **kwargs)
     exists.append(img)
 
     # Text
@@ -41,7 +43,7 @@ def test_annotations():
         "fontsize": 5,
         "opacity": 0.7,
     }
-    img = utils.add_text(baseimg, **kwargs)
+    img = editortools.add_text(baseimg, **kwargs)
     exists.append(img)
 
     # Arrow
@@ -61,7 +63,7 @@ def test_annotations():
         "color": (255, 0, 0),
         "opacity": 0.7,
     }
-    img = utils.add_arrow(baseimg, startpos, endpos, **kwargs)
+    img = editortools.add_arrow(baseimg, startpos, endpos, **kwargs)
     exists.append(img)
 
     # Circle
@@ -80,7 +82,7 @@ def test_annotations():
         "outline": (0, 0, 0),
         "width": 1,
     }
-    img = utils.add_circle(baseimg, centerpos, radius, **kwargs)
+    img = editortools.add_circle(baseimg, centerpos, radius, **kwargs)
     exists.append(img)
 
     assert all(isinstance(im, Image.Image) for im in exists)

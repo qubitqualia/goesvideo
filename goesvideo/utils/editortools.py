@@ -1,17 +1,19 @@
+import os
+import shutil
 import json
+import copy
+from pathlib import Path
+
 import pytz
 import cv2
-from PIL import ImageDraw, ImageFont, Image
 import matplotlib.colors as colors
+import numpy as np
+from PIL import ImageDraw, ImageFont, Image
 from matplotlib import colormaps
 from datetime import datetime
-import numpy as np
 from moviepy.editor import ImageSequenceClip, VideoFileClip
 from moviepy.video.fx import freeze as frz
 from colorama import Fore
-import copy
-import pathlib
-import os
 
 
 # Functions for image modifications
@@ -32,6 +34,13 @@ def build_cmap(fname):
         cmap = colormaps.get_cmap(fname)
 
     return cmap
+
+
+def copy_image(file, dstpath):
+    fp = Path(file)
+    fname = dstpath / (fp.stem + fp.suffix)
+    shutil.copy(file, str(fname))
+    return fname
 
 
 def add_text(img, **kwargs):

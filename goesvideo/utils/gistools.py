@@ -1,18 +1,19 @@
 import os
+import sys
 import tempfile
 from datetime import datetime
+from pathlib import Path
+
 import pytz
-from pathlib import Path
-from shapely.geometry import box
-from rasterio.coords import BoundingBox
-import rasterio
-from PIL import Image
-from rasterio.transform import from_bounds
-from rasterio.warp import transform
-from pathlib import Path
-from rasterio.warp import calculate_default_transform, reproject, Resampling
 import numpy as np
+import rasterio
+import rasterio.warp as rwarp
 from colorama import Fore
+from rasterio.transform import from_bounds
+from rasterio.coords import BoundingBox
+from rasterio.enums import Resampling
+from shapely.geometry import box
+from PIL import Image
 try:
     from osgeo import gdal
 except ImportError:
@@ -38,8 +39,8 @@ def transform_bbox(bbox, src_crs, dst_crs):
     x0, y0 = bbox[0], bbox[1]
     x1, y1 = bbox[2], bbox[3]
 
-    x0t, y0t = transform(src_crs, dst_crs, [x0], [y0])
-    x1t, y1t = transform(src_crs, dst_crs, [x1], [y1])
+    x0t, y0t = rwarp.transform(src_crs, dst_crs, [x0], [y0])
+    x1t, y1t = rwarp.transform(src_crs, dst_crs, [x1], [y1])
 
     bbox = [x0t[0], y0t[0], x1t[0], y1t[0]]
 
@@ -162,7 +163,7 @@ def get_shape_geotiff(file):
     return src_x_pixels, src_y_pixels
 
 
-def get_shape_img(self, file):
+def get_shape_img(file):
 
     img = Image.open(str(file))
     w, h = img.size
@@ -176,10 +177,10 @@ def reproject(file, out_crs='EPSG:4326'):
     with rasterio.open(str(file)) as src:
 
         if isinstance(out_crs, str):
-            _transform, width, height = calculate_default_transform(src.crs, {'init': out_crs}, src.width, src.height,
+            _transform, width, height = rwarp.calculate_default_transform(src.crs, {'init': out_crs}, src.width, src.height,
                                                                  *src.bounds)
         else:
-            _transform, width, height = calculate_default_transform(src.crs, out_crs, src.width,
+            _transform, width, height = rwarp.calculate_default_transform(src.crs, out_crs, src.width,
                                                                  src.height,
                                                                  *src.bounds)
 
@@ -193,11 +194,11 @@ def reproject(file, out_crs='EPSG:4326'):
 
         with rasterio.open(str(_file), 'w', **kwargs) as dst:
             for i in range(1, src.count + 1):
-                reproject(source=rasterio.band(src, i),
+                rwarp.reproject(rasterio.band(src, i),
                           destination=rasterio.band(dst, i),
                           src_transform=src.transform,
                           src_crs=src.crs,
-                          dst_transform=transform,
+                          dst_transform=_transform,
                           dst_crs=out_crs,
                           resampling=Resampling.nearest)
 
@@ -244,7 +245,7 @@ def crop_geotiff(file, bbox, height, width, opacity=1):
 
             with rasterio.open(str(svname), 'w', **kwargs) as final:
                 for i in range(1, src.count + 1):
-                    reproject(source=rasterio.band(src, i),
+                    rwarp.reproject(rasterio.band(src, i),
                               destination=rasterio.band(final, i),
                               src_tansform=src.transform,
                               dst_transform=dsttransform,
@@ -426,6 +427,74 @@ def replace_file_timezone(file, in_tz, out_tz, out_abbr):
 
     os.rename(file, fname)
     return
+
+# def get_timestamp(file, tformatdict, tz=pytz.utc):
+#     """
+#     Applies user-provided time format string to filename to extract timestamp.
+#     The returned datetime also has its timezone set to that provided, or UTC if
+#     none is provided
+#     @param file: (str) filename containing datetime string
+#     @param tformatdict: (dict) indexes returned by _time_format_str
+#     @param tz: (pytz tz obj) pytz timezone object
+#     @return: (datetime) tz-aware datetime
+#     """
+#
+#
+#     kwargs = {}
+#     if tformatdict['Y'][0] is not None and tformatdict['Y'][1] is not None:
+#         year = int(file[tformatdict['Y'][0]:tformatdict['Y'][1]])
+#     else:
+#         year = None
+#     if tformatdict['M'][0] is not None and tformatdict['M'][1] is not None:
+#         month = int(file[tformatdict['M'][0]:tformatdict['M'][1]])
+#     else:
+#         month = None
+#     if tformatdict['D'][0] is not None and tformatdict['D'][1] is not None:
+#         day = int(file[tformatdict['D'][0]:tformatdict['D'][1]])
+#     else:
+#         day = None
+#     if tformatdict['h'][0] and tformatdict['h'][1]:
+#         kwargs['hour'] = int(file[tformatdict['h'][0]:tformatdict['h'][1]])
+#     if tformatdict['m'][0] and tformatdict['m'][1]:
+#         kwargs['minute'] = int(file[tformatdict['m'][0]:tformatdict['m'][1]])
+#     if tformatdict['s'][0] and tformatdict['s'][1]:
+#         kwargs['second'] = int(file[tformatdict['s'][0]:tformatdict['s'][1]])
+#
+#     if not year or not month or not day:
+#         print(f'{Fore.RED} ERROR: Could not extract time from provided filename {file}. Check time format string.')
+#         print(f'{Fore.RED} Exiting...')
+#         sys.exit(0)
+#
+#     t = tz.localize(datetime(year, month, day, **kwargs))
+#
+#     return t
+
+
+def get_max_bbox(base_bbox, overlaybbox):
+    """
+    Returns maximal intersection of bounds from base and overlay
+    images
+    """
+    _base = base_bbox
+    base_box_adj = [[_base[0] + 180, _base[1] + 90, _base[2] + 180, _base[3] + 90]]
+    overlay_box_adj = []
+    for bbox in overlaybbox:
+        overlay_box_adj = [[bbox[0] + 180, bbox[1] + 90, bbox[2] + 180, bbox[3] + 90]]
+
+    bboxes = base_box_adj + overlay_box_adj
+    bbox_polys = []
+    for bbox in bboxes:
+        bbox_polys.append(box(*bbox))
+
+    _maxbbox = bbox_polys[0]
+    for rect in bbox_polys:
+        _maxbbox = _maxbbox.intersection(rect)
+
+    maxbbox = _maxbbox.bounds
+    maxbbox = [maxbbox[0] - 180, maxbbox[1] - 90, maxbbox[2] - 180, maxbbox[3] - 90]
+
+    ret = BoundingBox(*maxbbox)
+    return ret
 
 
 def get_bbox_intersection(user_bbox, img_bbox):

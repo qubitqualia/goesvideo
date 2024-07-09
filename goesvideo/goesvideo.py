@@ -1,8 +1,3 @@
-from copy import deepcopy
-from datetime import datetime, timedelta
-from pathlib import Path
-import csv
-import hashlib
 import os
 import json
 import pytz
@@ -13,38 +8,42 @@ import time
 import urllib3
 import uuid
 import yaml
+import csv
+import hashlib
 from importlib.resources import files
+from copy import deepcopy
+from datetime import datetime, timedelta
+from pathlib import Path
+
 import boto3
-from botocore import UNSIGNED
-from botocore.config import Config
+import satpy
+import satpy.utils
 import botocore.exceptions
 import boto3.exceptions
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
+from botocore import UNSIGNED
+from botocore.config import Config
 from PIL import Image
 from moviepy.editor import ImageSequenceClip
 from matplotlib import colormaps
-from colorama import init as colorama_init
-import satpy
-import satpy.utils
 from colorama import Fore
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-import goesvideo.utils.editortools as utils
-import goesvideo.exceptions as exceptions
 from satpy.writers import to_image
 import trollimage.colormap as cm
+
+import goesvideo.utils.editortools as utils
+import goesvideo.exceptions as exceptions
+
 
 def convert(pil_img, mode):
     img = pil_img.convert(mode)
     return img
 
-def test():
-    print('Test!')
 
 class GoesBase:
     def __init__(self, sat, region, product):
-        colorama_init()
         self.region_list = ["full", "conus"]
         self.band_list = [
             "C01",

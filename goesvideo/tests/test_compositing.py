@@ -1,10 +1,12 @@
+import sys
 from pathlib import Path
 import tempfile
-from goesvideo import GoesCompositor
 from importlib.resources import files as importfiles
+
 from PIL import Image
-import sys
 import pytest
+
+from goesvideo import GoesCompositor
 
 
 def test_compositing():

@@ -1,11 +1,13 @@
+import sys
 import tempfile
 from pathlib import Path
-from goesvideo import GoesAnimator
 from importlib.resources import files as importfiles
+
 from PIL import Image
 import pytest
 import pytz
-import sys
+
+from goesvideo import GoesAnimator
 
 
 def test_preview():

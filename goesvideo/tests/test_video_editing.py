@@ -1,14 +1,16 @@
-from goesvideo import utils
-from PIL import Image
 import sys
-import pytest
 from importlib.resources import files as importfiles
+
+from PIL import Image
+import pytest
 from moviepy.video.VideoClip import VideoClip
+
+from goesvideo.utils import editortools
 
 
 def test_video_edit():
     # Open test video
-    clip = utils.GoesClip(
+    clip = editortools.GoesClip(
         str(importfiles("goesvideo") / "tests" / "Test Videos" / "video.mp4")
     )
 

@@ -1,9 +1,11 @@
+import sys
 import tempfile
 from datetime import datetime, timedelta
-from goesvideo import GoesDownloader
+
 import numpy as np
-import sys
 import pytest
+
+from goesvideo import GoesDownloader
 
 
 def test_download():
