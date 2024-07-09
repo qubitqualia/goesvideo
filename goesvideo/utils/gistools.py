@@ -20,7 +20,7 @@ try:
 except ImportError:
     print(
         f"{Fore.RED} WARNING! Could not import osgeo package. The resize_geotiff function will be "
-        f"unusable."
+        f"unusable. {Fore.WHITE} "
     )
 
 
