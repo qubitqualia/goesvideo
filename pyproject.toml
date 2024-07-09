@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "goesvideo"
-version = "2024.0.0"
+version = "2024.1.0"
 authors = [{name="Justin Holland"}]
 description = """Package to streamline operations with GOES satellite imagery"""
 readme = "README.md"

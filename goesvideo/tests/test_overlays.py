@@ -8,7 +8,7 @@ import pytz
 import matplotlib.cm as cm
 from PIL import Image
 
-from goesvideo.addons.addons import Overlay
+from goesvideo.addons.overlays import Overlay
 
 
 def test_overlays():

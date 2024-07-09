@@ -102,6 +102,15 @@ def image_to_geotiff(img, bbox, outcrs, outpath=None):
 
 
 def resize_geotiff(file, width, height, resample=False, delete=True):
+    """
+    Resize geotiff
+    @param file: (str) path to geotiff
+    @param width: (int) desired output width
+    @param height: (int) desired output height
+    @param resample: (bool) enable resampling of image upon resizing
+    @param delete: (bool) delete input file and replace with resized output file
+    @return: (str) path to resized geotiff
+    """
     if isinstance(file, str):
         _path = Path(file)
     else:
@@ -120,10 +129,19 @@ def resize_geotiff(file, width, height, resample=False, delete=True):
     if delete:
         os.remove(str(_path))
         os.rename(str(outpath), str(_path))
-    return
+    return outpath
 
 
-def resize_image(file, width, height, resample=False):
+def resize_image(file, width, height, resample=False, delete=True):
+    """
+    Resize a simple image
+    @param file: (str) path to image file
+    @param width: (int) desired output width
+    @param height: (int) desired output height
+    @param resample: (bool) enable resampling of image upon resizing
+    @param delete: (bool) delete input file and replace with resized output file
+    @return: (str) path to resized image
+    """
     outpath = file.parent / (file.stem + '_tmp' + file.suffix)
     img = Image.open(str(file))
     if resample:
@@ -132,12 +150,18 @@ def resize_image(file, width, height, resample=False):
         img = img.resize((width, height))
     img.save(outpath)
     img.close()
-    os.remove(str(file))
-    os.rename(str(outpath), str(file))
-    return
+    if delete:
+        os.remove(str(file))
+        os.rename(str(outpath), str(file))
+    return outpath
 
 
 def geotiff_to_image(srctif):
+    """
+    Convert a geotiff to a simple image
+    @param srctif: (str) path to source tif
+    @return: (PIL.Image obj) output image
+    """
     ds = rasterio.open(str(srctif), 'r')
     bands = ds.indexes
     data = ds.read(bands)
@@ -155,6 +179,11 @@ def geotiff_to_image(srctif):
 
 
 def get_shape_geotiff(file):
+    """
+    Get the shape in pixels of a geotiff
+    @param file: (str) path to geotiff
+    @return: (tup) width in pixels, height in pixels
+    """
 
     with rasterio.open(str(file)) as src:
         src_x_pixels = src.shape[1]
@@ -164,6 +193,11 @@ def get_shape_geotiff(file):
 
 
 def get_shape_img(file):
+    """
+    Get the shape in pixels of a simple image
+    @param file: (str) path to image file
+    @return: (tup) width in pixels, height in pixels
+    """
 
     img = Image.open(str(file))
     w, h = img.size
@@ -173,16 +207,23 @@ def get_shape_img(file):
 
 
 def reproject(file, out_crs='EPSG:4326'):
+    """
+    Reproject a geotiff to specified CRS. File is modified in-place.
+    @param file: (str) path to geotiff
+    @param out_crs: (rasterio.crs.CRS obj) desired output CRS of image
+    @return: None
+    """
 
     with rasterio.open(str(file)) as src:
 
         if isinstance(out_crs, str):
-            _transform, width, height = rwarp.calculate_default_transform(src.crs, {'init': out_crs}, src.width, src.height,
-                                                                 *src.bounds)
+            _transform, width, height = rwarp.calculate_default_transform(src.crs, {'init': out_crs}, src.width,
+                                                                          src.height,
+                                                                          *src.bounds)
         else:
             _transform, width, height = rwarp.calculate_default_transform(src.crs, out_crs, src.width,
-                                                                 src.height,
-                                                                 *src.bounds)
+                                                                          src.height,
+                                                                          *src.bounds)
 
         kwargs = src.meta.copy()
         kwargs.update({'crs': out_crs,
@@ -195,12 +236,12 @@ def reproject(file, out_crs='EPSG:4326'):
         with rasterio.open(str(_file), 'w', **kwargs) as dst:
             for i in range(1, src.count + 1):
                 rwarp.reproject(rasterio.band(src, i),
-                          destination=rasterio.band(dst, i),
-                          src_transform=src.transform,
-                          src_crs=src.crs,
-                          dst_transform=_transform,
-                          dst_crs=out_crs,
-                          resampling=Resampling.nearest)
+                                destination=rasterio.band(dst, i),
+                                src_transform=src.transform,
+                                src_crs=src.crs,
+                                dst_transform=_transform,
+                                dst_crs=out_crs,
+                                resampling=Resampling.nearest)
 
     os.remove(file)
     os.rename(_file, file)
@@ -208,14 +249,29 @@ def reproject(file, out_crs='EPSG:4326'):
 
 
 def get_bounds(file):
+    """
+    Get the bounds of a geotiff
+    @param file: (str) path to geotiff
+    @return: (list) bbox bounds
+    """
     with rasterio.open(str(file)) as src:
         bounds = src.bounds
     return bounds
 
 
-def crop_geotiff(file, bbox, height, width, opacity=1):
+def crop_geotiff(file, bbox, height, width, resample=False, opacity=1, delete=True):
+    """
+    Crop a geotiff to specified bbox and also resize, if desired.
+    @param file: (str) path to geotiff
+    @param bbox: (list) bbox bounds
+    @param height: (int) desired height of output geotiff
+    @param width: (int) desired width of output geotiff
+    @param resample: (bool) enable resampling upon resizing
+    @param opacity: (float) opacity of output geotiff
+    @param delete: (bool) delete input file and replace with resized output file
+    @return:
+    """
     svname = file.parent / (file.stem + '_crop' + file.stem)
-    skip = False
 
     # src = rasterio.open(str(file))
     with rasterio.open(str(file)) as src:
@@ -243,22 +299,33 @@ def crop_geotiff(file, bbox, height, width, opacity=1):
                            'width': newwidth,
                            'height': newheight})
 
+            if resample:
+                kwargs = {'resampling': Resampling.nearest}
+            else:
+                kwargs = {}
+
             with rasterio.open(str(svname), 'w', **kwargs) as final:
                 for i in range(1, src.count + 1):
                     rwarp.reproject(rasterio.band(src, i),
-                              destination=rasterio.band(final, i),
-                              src_tansform=src.transform,
-                              dst_transform=dsttransform,
-                              dst_crs=src.crs,
-                              resampling=Resampling.nearest)
+                                    destination=rasterio.band(final, i),
+                                    src_tansform=src.transform,
+                                    dst_transform=dsttransform,
+                                    dst_crs=src.crs,
+                                    **kwargs)
 
-    if not skip:
+    if delete:
         os.remove(str(file))
         os.rename(str(svname), str(file))
-    return
+    return svname
 
 
 def adjust_alpha(img, alpha):
+    """
+    Adjust alpha of simple image
+    @param img: (PIL.Image obj) input image
+    @param alpha: (float) desired alpha value
+    @return: (PIL.Image obj) output image
+    """
     imgarr = np.array(img, dtype=np.uint8)
     np.place(imgarr[:, :, 3], imgarr[:, :, 3] > 0, int(alpha * 255))
     retimg = Image.fromarray(imgarr, 'RGBA')
@@ -267,6 +334,11 @@ def adjust_alpha(img, alpha):
 
 
 def trim_img_border(img):
+    """
+    Trim border of simple image
+    @param img: (PIL.Image obj) input image
+    @return: (PIL.Image obj) trimmed output image
+    """
     imgarr = np.array(img, dtype=np.uint8)
     mask = np.array((255 - imgarr[:, :, 3]) / 255, dtype=np.uint8)
     r = np.ma.array(imgarr[:, :, 0], mask=mask)
@@ -352,6 +424,11 @@ def get_timestamp(file, tformatdict, tz=pytz.utc):
 
 
 def time_format_str(instr):
+    """
+    Generates time format dictionary to be used for parsing image filenames
+    @param instr: (str) input format string (e.g. "YYYY-MM-dd hh_mm_ss")
+    @return: (dict) time format dict
+    """
     if instr:
         chars = ['Y', 'M', 'D', 'h', 'm', 's']
         start_idxs = []
@@ -386,6 +463,14 @@ def time_format_str(instr):
 
 
 def replace_file_timezone(file, in_tz, out_tz, out_abbr):
+    """
+    Renames a file to match desired timezone
+    @param file: (str) path to file
+    @param in_tz: (pytz tz obj) timezone in input filename
+    @param out_tz: (pytz tz obj) timezone in output filename
+    @param out_abbr: (str) timezone abbreviation to use in output filename
+    @return: None
+    """
     if isinstance(file, str):
         tstr = file.split('\\')[-1].split('.')[0]
         svpath = '\\'.join(file.split('\\')[0:-1])
@@ -472,8 +557,10 @@ def replace_file_timezone(file, in_tz, out_tz, out_abbr):
 
 def get_max_bbox(base_bbox, overlaybbox):
     """
-    Returns maximal intersection of bounds from base and overlay
-    images
+    Returns maximum common bounds of base and overlay sets
+    @param: (list) bbox of base set
+    @param: (list) bbox of overlay set
+    @return: (list) maximum common bbox
     """
     _base = base_bbox
     base_box_adj = [[_base[0] + 180, _base[1] + 90, _base[2] + 180, _base[3] + 90]]
@@ -498,6 +585,12 @@ def get_max_bbox(base_bbox, overlaybbox):
 
 
 def get_bbox_intersection(user_bbox, img_bbox):
+    """
+    Returns the intersection of bbox areas
+    @param user_bbox: (list) user-provided bbox
+    @param img_bbox: (list) image bbox
+    @return: (list) bbox intersection
+    """
     if user_bbox and img_bbox:
         user_bbox_adj = box(user_bbox[0] + 180, user_bbox[1] + 90, user_bbox[2] + 180, user_bbox[3] + 90)
         img_bbox_adj = box(img_bbox[0] + 180, img_bbox[1] + 90, img_bbox[2] + 180, img_bbox[3] + 90)
@@ -515,6 +608,12 @@ def get_bbox_intersection(user_bbox, img_bbox):
 
 
 def check_bbox(requested, actual):
+    """
+    Check the user-requested bbox is valid
+    @param requested: (list) user-requested bbox
+    @param actual: (list) image bbox
+    @return: (tup) tuple of bools
+    """
     lon_ok = False
     lat_ok = False
 

@@ -37,11 +37,6 @@ import goesvideo.utils.editortools as utils
 import goesvideo.exceptions as exceptions
 
 
-def convert(pil_img, mode):
-    img = pil_img.convert(mode)
-    return img
-
-
 class GoesBase:
     def __init__(self, sat, region, product):
         self.region_list = ["full", "conus"]
@@ -145,8 +140,8 @@ class GoesBase:
     def _get_timestamp_from_filename(filename):
         """
         Returns the datetime corresponding to the end time of the provided nc filename
-        :param filename: (str) nc filename
-        :return: datetime object
+        @param filename: (str) nc filename
+        @return: datetime object
         """
         if isinstance(filename, Path):
             filename = str(filename)
@@ -158,6 +153,7 @@ class GoesBase:
         else:
             f = filename.split("_")
 
+        t = None
         for _s in f:
             if _s.startswith("e"):
                 _s = _s.lstrip("e")
@@ -175,9 +171,9 @@ class GoesBase:
     def _filter_by_interval(self, filedict, interval):
         """
         Filters a file dictionary spanning a time range using the specified interval
-        :param filedict: (dict) filenames aggregated by band identifier (e.g. {'C01': [<filenames>], 'C02':...}
-        :param interval: (int) desired time interval between nc file end times in minutes
-        :return: (dict) filtered dict of filenames
+        @param filedict: (dict) filenames aggregated by band identifier (e.g. {'C01': [<filenames>], 'C02':...}
+        @param interval: (int) desired time interval between nc file end times in minutes
+        @return: (dict) filtered dict of filenames
         """
         retdict = {}
         for key in filedict:
@@ -258,13 +254,13 @@ class GoesDownloader(GoesBase):
         """
         Download all available files between start and end times at the
         specified interval
-        :param start_time: (str) isoformat datetime string (utc time)
-        :param end_time: (str) isoformat datetime string (utc time)
-        :param interval: (int) minutes between file timestamps
-        :param checksum: (bool) If true, ensures file integrity after download
-        :param force: (bool) If true, forces completion of function bypassing any
+        @param start_time: (str) isoformat datetime string (utc time)
+        @param end_time: (str) isoformat datetime string (utc time)
+        @param interval: (int) minutes between file timestamps
+        @param checksum: (bool) If true, ensures file integrity after download
+        @param force: (bool) If true, forces completion of function bypassing any
                              input prompts
-        :return: None
+        @return: None
         """
 
         tstart = datetime.fromisoformat(start_time)
@@ -291,14 +287,14 @@ class GoesDownloader(GoesBase):
         """
         Downloads all files required to produce the specified scene between the
         start and end times
-        :param scenename: (str) name of Satpy scene (e.g. 'true_color')
-        :param start_time: (str) isoformat datetime string (utc time)
-        :param end_time: (str) isoformat datetime string (utc time)
-        :param interval: (int) minutes between file timestamps
-        :param checksum: (bool) If true, ensures file integrity after download
-        :param force: (bool) If true, forces completion of function bypassing any
+        @param scenename: (str) name of Satpy scene (e.g. 'true_color')
+        @param start_time: (str) isoformat datetime string (utc time)
+        @param end_time: (str) isoformat datetime string (utc time)
+        @param interval: (int) minutes between file timestamps
+        @param checksum: (bool) If true, ensures file integrity after download
+        @param force: (bool) If true, forces completion of function bypassing any
                              input prompts
-        :return: None
+        @return: None
         """
 
         tstart = datetime.fromisoformat(start_time)
@@ -349,8 +345,8 @@ class GoesDownloader(GoesBase):
         """
         Returns the filenames required to produce the given scene name as
         a dictionary aggregated by CMI band
-        :param scenename: (str) name of Satpy scene (e.g. 'true_color')
-        :return: (dict) filenames
+        @param scenename: (str) name of Satpy scene (e.g. 'true_color')
+        @return: (dict) filenames
         """
         # Currently, the downloader can handle the ABI-L2-CMIP and ABI-L2-FDC products
         if not scenename.startswith('Power') and not scenename.startswith('Temp'):
@@ -378,12 +374,12 @@ class GoesDownloader(GoesBase):
     def check_for_needed_files(self, start_time, end_time, scenename=None, interval=5):
         """
         Determines the files not available locally which require downloading from AWS
-        :param start_time: (str) isoformat datetime string (utc time)
-        :param end_time: (str) isoformat datetime string (utc time)
-        :param scenename: (str) name of Satpy scene (e.g. 'true_color'); if not provided
+        @param start_time: (str) isoformat datetime string (utc time)
+        @param end_time: (str) isoformat datetime string (utc time)
+        @param scenename: (str) name of Satpy scene (e.g. 'true_color'); if not provided
                           the function will check all CMI bands
-        :param interval: (int) minutes between file timestamps
-        :return: (tup) filenames to be downloaded [(str)], sizes in bytes [(int)]
+        @param interval: (int) minutes between file timestamps
+        @return: (tup) filenames to be downloaded [(str)], sizes in bytes [(int)]
         """
         needed_files = []
         needed_sizes = []
@@ -477,9 +473,9 @@ class GoesDownloader(GoesBase):
         """
         Queries AWS for data filenames between start and end times.
 
-        :param start_time: (datetime obj) start time (utc time)
-        :param end_time: (datetime obj) end time (utc time) (optional)
-        :return: (dict) filename dict aggregated by CMI band
+        @param start_time: (datetime obj) start time (utc time)
+        @param end_time: (datetime obj) end time (utc time) (optional)
+        @return: (dict) filename dict aggregated by CMI band
         """
         # Convert times to UTC
         start = pytz.utc.localize(start_time)
@@ -605,12 +601,12 @@ class GoesDownloader(GoesBase):
         """
         Perform bulk download of GOES data files from AWS.
 
-        :param filenames: [(str)] list of AWS filenames
-        :param sizes: [(int)] list of file sizes
-        :param etags: [(str)] list of md5 checksums for files
-        :param force: (bool) If true, forces completion of function bypassing any
+        @param filenames: [(str)] list of AWS filenames
+        @param sizes: [(int)] list of file sizes
+        @param etags: [(str)] list of md5 checksums for files
+        @param force: (bool) If true, forces completion of function bypassing any
                              input prompts
-        :return: None
+        @return: None
         """
         maxtries = 3
         _exit = False
@@ -759,9 +755,9 @@ class GoesDownloader(GoesBase):
                  'sizes': [],
                  'start_time': datetime obj,
                  'end_time': datetime obj}}
-        :param start_time: (str) isoformat datetime string (utc time)
-        :param end_time: (str) isoformat datetime string (utc time)
-        :return: None
+        @param start_time: (str) isoformat datetime string (utc time)
+        @param end_time: (str) isoformat datetime string (utc time)
+        @return: None
         """
 
         # Convert isoformat times to datetimes
@@ -846,24 +842,24 @@ class GoesCompositor(GoesBase):
     ):
         """
 
-        :param scenename: (str) name of Satpy scene (e.g. 'true_color')
-        :param start_time: (str) isoformat datetime string (utc time)
-        :param end_time: (str) isoformat datetime string (utc time)
-        :param bbox: (tup) latitude-longitude coordinates for cropping the output scene given as
+        @param scenename: (str) name of Satpy scene (e.g. 'true_color')
+        @param start_time: (str) isoformat datetime string (utc time)
+        @param end_time: (str) isoformat datetime string (utc time)
+        @param bbox: (tup) latitude-longitude coordinates for cropping the output scene given as
                            (xmin, ymax, xmax, ymin)
-        :param interval: (int) desired interval in minutes between composite images
-        :param output_format: (str) file format for output images (e.g. 'simple_image', 'geotiff')
-        :param keep_filenames: (bool) If true, output images will be saved using the original nc filename template.
+        @param interval: (int) desired interval in minutes between composite images
+        @param output_format: (str) file format for output images (e.g. 'simple_image', 'geotiff')
+        @param keep_filenames: (bool) If true, output images will be saved using the original nc filename template.
                                       Otherwise, ouput images will be saved using a more readable timestamp. Timezone
                                       info for the timestamp can be provided using the 'tzinfo' parameter, if desired.
-        :param folder_name: (str) Desired name of the subfolder to which images will be saved. If none is provided a
+        @param folder_name: (str) Desired name of the subfolder to which images will be saved. If none is provided a
                                   random name will be generated.
-        :param tzinfo: (tup) timezone info for generating readable output filenames, provided as a tuple containing
+        @param tzinfo: (tup) timezone info for generating readable output filenames, provided as a tuple containing
                              a pytz timezone object and 3 character timezone abbreviation. If not provided, filenames
                              generated when 'keep_filenames' is True will be returned as UTC
-        :param coastlines: (bool) If true, coastlines will be added to the output images. Options for coastlines can
+        @param coastlines: (bool) If true, coastlines will be added to the output images. Options for coastlines can
                                   be set beforehand by calling 'set_coastlines_options'
-        :param resampling: (tup) Resampling options for satpy resampler provided as a tuple containing the
+        @param resampling: (tup) Resampling options for satpy resampler provided as a tuple containing the
                                  resampling area and resampler method to use. Options for the resampling area include
                                  'finest', 'coarsest', 'lowest area' or an area explictly defined in the satpy
                                  areas.yaml file. If not provided, 'finest' is used as the default area. This typically
@@ -872,12 +868,12 @@ class GoesCompositor(GoesBase):
                                  attempt using 'finest' and if that fails then fall back to 'lowest area'. The options
                                  for the resampler method include 'native', 'nearest', etc. To disable resampling completely
                                  pass a tup containing ('none', 'none').
-        :param force: (bool) If true, forces completion of function bypassing any
+        @param force: (bool) If true, forces completion of function bypassing any
                              input prompts
-        :param delete_data (bool) If true, function will delete all underlying datasets used to produce composites upon
+        @param delete_data (bool) If true, function will delete all underlying datasets used to produce composites upon
                                   completion
-        :param kwargs: (dict) function keyword arguments and/or kwargs to be passed to satpy compositor
-        :return: None
+        @param kwargs: (dict) function keyword arguments and/or kwargs to be passed to satpy compositor
+        @return: None
         """
 
         # Turn off debugging by default
@@ -983,13 +979,13 @@ class GoesCompositor(GoesBase):
         """
         Prepare a satpy composite for a given scene name using the nc filenames
         contained in scene_dict
-        :param scenename: (str) satpy composite name
-        :param scene_dict: (dict) {'C01': [nc_file_t0.....nc_file_tf], 'C02':....}
-        :param folder_name: (str) name of subfolder in Images path to save the images, if
+        @param scenename: (str) satpy composite name
+        @param scene_dict: (dict) {'C01': [nc_file_t0.....nc_file_tf], 'C02':....}
+        @param folder_name: (str) name of subfolder in Images path to save the images, if
                                   none provided a temp folder will be used
-        :param kwargs: (dict) kwargs used by this function are removed and whatever is left
+        @param kwargs: (dict) kwargs used by this function are removed and whatever is left
                               over is passed to the satpy compositor
-        :return: (TemporaryDirectory) temp folder where files have been saved
+        @return: (TemporaryDirectory) temp folder where files have been saved
         """
 
         # Unpack kwargs
@@ -1208,14 +1204,6 @@ class GoesCompositor(GoesBase):
                             new_scene.save_dataset(scenename, writer='geotiff', filename=str(folder_path / svname),
                                                    keep_palette=True, **kwargs)
 
-                        #new_scene.save_dataset(
-                        #    scenename,
-                        #    writer="geotiff",
-                        #    filename=str(folder_path / svname),
-                        #    fill_value=False,
-                        #    **kwargs,
-                        #)
-
                     with open(str(folder_path / "timestamps.csv"), "a") as f:
                         tstr = self._get_timestamp_from_filename(
                             filenames[0]
@@ -1314,17 +1302,17 @@ class GoesAnimator(GoesBase):
         time series of images. It is advisable to use the same resolution as that intended for the final output
         video when using this function.
 
-        :param scenename: (str) satpy scene name
-        :param utctime: (str) isoformat datetime target for image in UTC; if not given the function will use
+        @param scenename: (str) satpy scene name
+        @param utctime: (str) isoformat datetime target for image in UTC; if not given the function will use
                               the current time as search target. Note that the returned image will be within
                               a window of +/- 2 hours of the target.
-        :param use_cached: (bool) if true, will attempt to find a pre-existing local dataset/image to use for
+        @param use_cached: (bool) if true, will attempt to find a pre-existing local dataset/image to use for
                             generating the preview image
-        :param use_image_file: (str) if desired, a specific image can be used for generating the preview
+        @param use_image_file: (str) if desired, a specific image can be used for generating the preview
                                      image by supplying a filepath
-        :param display: (bool) if false, the preview image will not be automatically displayed
-        :param kwargs: (dict) image-related keywords for 'create_video' and/or compositor keywords
-        :return: PIL Image
+        @param display: (bool) if false, the preview image will not be automatically displayed
+        @param kwargs: (dict) image-related keywords for 'create_video' and/or compositor keywords
+        @return: PIL Image
         """
         # Unpack kwargs for image operations. Remaining kwargs will be passed on to the compositor
         timestamps = kwargs.pop("timestamps", None)
@@ -1533,10 +1521,10 @@ class GoesAnimator(GoesBase):
         'abibands.yaml' to match any customizations made to 'abi.yaml'. The former file simply maps the required
         ABI bands for each scene.
 
-        :param scenename: (str) satpy scenename or 'available' (only when using 'from_existing_imgs')
-        :param start_time: (str) isoformat datetime for GOES imagery in video
-        :param end_time: (str) isoformat datetime for GOES imagery in video
-        :param from_existing_imgs: (bool) If true, will automatically search through subfolders in the Images directory
+        @param scenename: (str) satpy scenename or 'available' (only when using 'from_existing_imgs')
+        @param start_time: (str) isoformat datetime for GOES imagery in video
+        @param end_time: (str) isoformat datetime for GOES imagery in video
+        @param from_existing_imgs: (bool) If true, will automatically search through subfolders in the Images directory
                                           to determine which ones have not yet been converted to videos. Then, the
                                           function attempts to generate videos corresponding to the requested scene
                                           using the existing images. If the requested scene cannot be made using the
@@ -1544,10 +1532,10 @@ class GoesAnimator(GoesBase):
                                           available scenes to be made instead. The user can also request all available
                                           scenes be made from existing images using 'available' for the scenename
                                           parameter.
-        :param interval: (int) time interval between GOES images in video in minutes
-        :param bbox: (tup) tuple of floats specifying crop region in latitude-longitude coordinates
+        @param interval: (int) time interval between GOES images in video in minutes
+        @param bbox: (tup) tuple of floats specifying crop region in latitude-longitude coordinates
                            (xmin, ymax, xmax, ymin)
-        :param timestamps: (dict) add timestamps to each frame of the video. Dictionary should be provided as follows:
+        @param timestamps: (dict) add timestamps to each frame of the video. Dictionary should be provided as follows:
                                   {'position': (tup) or (str) position of timestamp label can be specified by giving
                                                               a precise ((int) x, (int) y) position or by using
                                                               'upper-left, 'upper-center', 'upper-right', 'lower-left',
@@ -1557,24 +1545,24 @@ class GoesAnimator(GoesBase):
                                    'fontsize': (int) fontsize in pixels,
                                    'timezone': (tup) ((object) pytz timezone, (str) timezone abbreviation (e.g. 'CST'))
                                   }
-        :param coastlines: (bool) Show coastlines on images used for the video. Coastline options can be changed from
+        @param coastlines: (bool) Show coastlines on images used for the video. Coastline options can be changed from
                                   their default values via the accessor GoesVideo.GoesCompositor.set_coastlines_options()
-        :param cmap: (str) Matplotlib colormap name or path to a json file containing a colormap produced using the
+        @param cmap: (str) Matplotlib colormap name or path to a json file containing a colormap produced using the
                            online app at https://sciviscolor.org/color-moves-app/
-        :param text: (dict) add custom text to each frame of the video. Dictionary should be provided with the same
+        @param text: (dict) add custom text to each frame of the video. Dictionary should be provided with the same
                             keywords used for the timestamps parameter except without the 'timezone' key. The text
                             string to be displayed should be assigned to a new 'label' key.
-        :param res: (str or tup) desired resolution for the video. Can be a tuple of ints (w, h) specifying width and
+        @param res: (str or tup) desired resolution for the video. Can be a tuple of ints (w, h) specifying width and
                                  height or 'auto' to optimally size the video for most displays while maintaining the
                                  aspect ratio of the images or 'full' to retain the resolution of the input images
-        :param fps: (int) frames per second for the video
-        :param codec: (str) FFMPEG codec (e.g. 'mpeg4', 'avi')
-        :param delete_images: (bool) If true, function will delete all images used to produce the video upon completion
-        :param delete_data: (bool) If true, function will delete all underlying datasets used to produce the video upon
+        @param fps: (int) frames per second for the video
+        @param codec: (str) FFMPEG codec (e.g. 'mpeg4', 'avi')
+        @param delete_images: (bool) If true, function will delete all images used to produce the video upon completion
+        @param delete_data: (bool) If true, function will delete all underlying datasets used to produce the video upon
                                    completion
-        :param force: (bool) If true, any user inputs will be supressed and the function will be forced to completion
-        :param kwargs: (dict) function keyword arguments and/or kwargs to be passed to GoesCompositor.create_composites
-        :return: None
+        @param force: (bool) If true, any user inputs will be supressed and the function will be forced to completion
+        @param kwargs: (dict) function keyword arguments and/or kwargs to be passed to GoesCompositor.create_composites
+        @return: None
         """
         # Check timestamps
         if timestamps:
@@ -1853,15 +1841,15 @@ class GoesAnimator(GoesBase):
     ):
         """
         Sets timestamp options for the video
-        :param fontpath: (str) path to ttf file (required)
-        :param position: (tup) or (str) position of timestamp label can be specified by
+        @param fontpath: (str) path to ttf file (required)
+        @param position: (tup) or (str) position of timestamp label can be specified by
                          giving a precise (x,y) tuple of pixel location or by using
                          'upper-left', 'upper-center', 'upper-right', 'lower-left',
                          'lower-center', 'lower-right'
-        :param fontcolor: (tup) RGB(A) color of font given in range of 0-255
-        :param fontsize: (int) fontsize in pixels or None for auto-sizing
-        :param timezone: (tup) ((obj) pytz timezone, (str) timezone abbreviation (e.g. 'CDT')
-        :return: None
+        @param fontcolor: (tup) RGB(A) color of font given in range of 0-255
+        @param fontsize: (int) fontsize in pixels or None for auto-sizing
+        @param timezone: (tup) ((obj) pytz timezone, (str) timezone abbreviation (e.g. 'CDT')
+        @return: None
         """
         if not isinstance(self.timestamp_options, dict):
             self.timestamp_options = {}
@@ -1938,3 +1926,4 @@ class GoesAnimator(GoesBase):
                     )
 
         return
+

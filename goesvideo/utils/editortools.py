@@ -18,7 +18,11 @@ from colorama import Fore
 
 # Functions for image modifications
 def build_cmap(fname):
-    """Builds a matplotlib cmap for a colormap specification generated using the app at sciviscolor.org"""
+    """
+    Builds a matplotlib cmap for a colormap specification generated using the app available at sciviscolor.org
+    @param fname: (str) path to colormap json
+    @return: (matplotlib.cm obj) colormap
+    """
     try:
         with open(fname) as jsonfile:
             _json = json.load(jsonfile)
@@ -37,6 +41,12 @@ def build_cmap(fname):
 
 
 def copy_image(file, dstpath):
+    """
+    Copy an image to a new location
+    @param file: (str) path to image file
+    @param dstpath: (str) save path
+    @return: (str) full save path to image
+    """
     fp = Path(file)
     fname = dstpath / (fp.stem + fp.suffix)
     shutil.copy(file, str(fname))
@@ -44,7 +54,12 @@ def copy_image(file, dstpath):
 
 
 def add_text(img, **kwargs):
-    """Adds custom text to an image frame"""
+    """
+    Add custom text to an image frame
+    @param img: (PIL.Image) input image
+    @param kwargs: (dict) see 'modify_image' function for options
+    @return: (PIL.Image) output image
+    """
     position = kwargs.get("position", "upper-left")
     fontcolor = kwargs.get("fontcolor", (0, 0, 0))
     fontpath = kwargs["fontpath"]
@@ -109,15 +124,19 @@ def add_text(img, **kwargs):
     txtimg = txtimg.rotate(-rotation, expand=True)
 
     img.paste(txtimg, (int(x), int(y)), txtimg)
-    #img = Image.alpha_composite(img, txtimg)
 
     img = img.convert('RGB')
     return img
 
 
 def add_timestamps(img, label, **kwargs):
-    """Adds a timestamp to an image frame"""
-
+    """
+    Add timestamp to image
+    @param img: (PIL.Image) input image
+    @param label: (str) datetime string to be added
+    @param kwargs: (dict) see 'modify_image' function for options
+    @return: (PIL.Image) output image
+    """
     tzinfo = None
     if kwargs:
         tzinfo = kwargs.pop("timezone", None)  # tuple
@@ -148,10 +167,18 @@ def add_timestamps(img, label, **kwargs):
     return img
 
 
-def add_circle(
-    img, centerpos, radius, label=None, fill=None, outline=None, width=None, **kwargs
-):
-    """Adds a circle to the image"""
+def add_circle(img, centerpos, radius, label=None, fill=None, outline=None, width=None):
+    """
+    Add a circle to an image
+    @param img: (PIL.Image) input image
+    @param centerpos: (tup) center position of circle in pixels (w, h)
+    @param radius: (int) radius of circle in pixels
+    @param label: (dict) label dictionary
+    @param fill: (str) color to use for filling circle
+    @param outline: (str) color to use for circle outline
+    @param width: (int) line width in pixels
+    @return: (PIL.Image) output image
+    """
 
     # Unpack label dict
     if label:
@@ -202,7 +229,18 @@ def add_arrow(
     color=(255, 0, 0),
     **kwargs,
 ):
-    """Adds an arrow to the image"""
+    """
+    Add an arrow to the image
+    @param img: (PIL.Image obj) input image
+    @param startpos: (tup) start position of arrow in pixels (w, h)
+    @param endpos: (tup) end position of arrow in pixels (w, h)
+    @param label: (dict) label dictionary
+    @param tiplength: (int) length of arrow tip in pixels
+    @param width: (int) width of line in pixels
+    @param color: (tup) BGR color
+    @param kwargs: (dict) see 'modify_image' function for options
+    @return: (PIL.Image obj) output image
+    """
 
     # Unpack label dict if provided
     if label:
@@ -313,6 +351,15 @@ def add_arrow(
 
 
 def add_triangle(img, xy, fill=None, outline=None, width=1):
+    """
+    Add a triangle to an image
+    @param img: (PIL.Image obj) input image
+    @param xy: (tup) location of triangle in pixels (w, h)
+    @param fill: (str) color to use for filling triangle
+    @param outline: (str) color to use for outline
+    @param width: (int) width of outline in pixels
+    @return: (PIL.Image obj) output image
+    """
     draw = ImageDraw.Draw(img)
     draw.polygon(xy, fill=fill, outline=outline, width=width)
 
@@ -323,8 +370,8 @@ def modify_image(img, **kwargs):
     """
     Helper function to perform image modifications
 
-    :param img: (PIL Image) image to be modified
-    :param kwargs: (dict) Valid keyword arguments include:
+    @param img: (PIL.Image obj) image to be modified
+    @param kwargs: (dict) Valid keyword arguments include:
                    - 'cmap': (str) or (matplotlib.colormap) applies a colormap to the image
                              If string is provided, it must either be a name of an existing
                              matplotlib colormap or a path to a json containing a colormap
@@ -376,7 +423,7 @@ def modify_image(img, **kwargs):
                                          'outline': (tup) RGB color of triangle outline,
                                          'width': (int) width of triangle outline in pixels
 
-    :return: PIL Image
+    @return: PIL Image
     """
     kwargs_copy = copy.deepcopy(kwargs)
     # Unpack kwargs
@@ -454,14 +501,14 @@ def annotate_video(
     """
     Add annotations to an existing animation. Modified video will be saved to the same
     path.
-    :param filepath: (str) path to video file
-    :param svname: (str) name of output video; if None then name will be the same
+    @param filepath: (str) path to video file
+    @param svname: (str) name of output video; if None then name will be the same
                          as the input file suffixed by '_annotated'
-    :param t_edit_start: (float) start time for edit in seconds
-    :param t_edit_end: (float) end time for edit in seconds
-    :param freeze: If true, the video will pause while annotations are displayed
-    :param kwargs: annotation-related kwargs
-    :return: None
+    @param t_edit_start: (float) start time for edit in seconds
+    @param t_edit_end: (float) end time for edit in seconds
+    @param freeze: If true, the video will pause while annotations are displayed
+    @param kwargs: annotation-related kwargs
+    @return: None
     """
     basepath = "\\".join(filepath.split("\\")[0:-1]) + "\\"
     # Try to get codec from savename or if not provided use avi
@@ -524,9 +571,6 @@ def annotate_video(
     outclip.write_videofile(svname, codec=codec)
 
     return
-
-
-
 
 
 # Class for video editing
