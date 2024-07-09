@@ -9,6 +9,10 @@ from goesvideo.utils import editortools
 
 
 def test_video_edit():
+
+    # Toggle display of output image
+    show_image = True
+
     # Open test video
     clip = editortools.GoesClip(
         str(importfiles("goesvideo") / "tests" / "Test Videos" / "video.mp4")
@@ -35,7 +39,8 @@ def test_video_edit():
     img = clip.preview(tmark=2, **kwargs)
 
     assert isinstance(img, Image.Image)
-    img.show()
+    if show_image:
+        img.show()
 
     return
 

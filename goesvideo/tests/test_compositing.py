@@ -10,6 +10,10 @@ from goesvideo import GoesCompositor
 
 
 def test_compositing():
+
+    # Toggle display of image
+    show_image = True
+
     # Create temp folder
     tmpfolder = tempfile.TemporaryDirectory()
     tmppath = Path(tmpfolder.name)
@@ -52,9 +56,10 @@ def test_compositing():
 
     assert len(files) > 0
 
-    img = Image.open(str(files[0]))
+    if show_image:
+        img = Image.open(str(files[0]))
 
-    img.show()
+        img.show()
 
     tmpfolder.cleanup()
     return

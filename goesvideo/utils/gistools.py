@@ -19,7 +19,8 @@ try:
     from osgeo import gdal
 except ImportError:
     print(
-        f"{Fore.RED} WARNING! Could not import osgeo package. The resize_geotiff function will be unusable."
+        f"{Fore.RED} WARNING! Could not import osgeo package. The resize_geotiff function will be "
+        f"unusable."
     )
 
 
@@ -449,7 +450,8 @@ def get_timestamp(file, tformatdict, tz=pytz.utc):
 
     if not year or not month or not day:
         print(
-            f"{Fore.RED} ERROR: Could not extract time from provided filename {file}. Check time format string."
+            f"{Fore.RED} ERROR: Could not extract time from provided filename {file}. Check time "
+            f"format string."
         )
         t = None
 
@@ -549,48 +551,6 @@ def replace_file_timezone(file, in_tz, out_tz, out_abbr):
 
     os.rename(file, fname)
     return
-
-
-# def get_timestamp(file, tformatdict, tz=pytz.utc):
-#     """
-#     Applies user-provided time format string to filename to extract timestamp.
-#     The returned datetime also has its timezone set to that provided, or UTC if
-#     none is provided
-#     @param file: (str) filename containing datetime string
-#     @param tformatdict: (dict) indexes returned by _time_format_str
-#     @param tz: (pytz tz obj) pytz timezone object
-#     @return: (datetime) tz-aware datetime
-#     """
-#
-#
-#     kwargs = {}
-#     if tformatdict['Y'][0] is not None and tformatdict['Y'][1] is not None:
-#         year = int(file[tformatdict['Y'][0]:tformatdict['Y'][1]])
-#     else:
-#         year = None
-#     if tformatdict['M'][0] is not None and tformatdict['M'][1] is not None:
-#         month = int(file[tformatdict['M'][0]:tformatdict['M'][1]])
-#     else:
-#         month = None
-#     if tformatdict['D'][0] is not None and tformatdict['D'][1] is not None:
-#         day = int(file[tformatdict['D'][0]:tformatdict['D'][1]])
-#     else:
-#         day = None
-#     if tformatdict['h'][0] and tformatdict['h'][1]:
-#         kwargs['hour'] = int(file[tformatdict['h'][0]:tformatdict['h'][1]])
-#     if tformatdict['m'][0] and tformatdict['m'][1]:
-#         kwargs['minute'] = int(file[tformatdict['m'][0]:tformatdict['m'][1]])
-#     if tformatdict['s'][0] and tformatdict['s'][1]:
-#         kwargs['second'] = int(file[tformatdict['s'][0]:tformatdict['s'][1]])
-#
-#     if not year or not month or not day:
-#         print(f'{Fore.RED} ERROR: Could not extract time from provided filename {file}. Check time format string.')
-#         print(f'{Fore.RED} Exiting...')
-#         sys.exit(0)
-#
-#     t = tz.localize(datetime(year, month, day, **kwargs))
-#
-#     return t
 
 
 def get_max_bbox(base_bbox, overlaybbox):

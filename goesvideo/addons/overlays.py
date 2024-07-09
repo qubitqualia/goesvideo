@@ -17,12 +17,13 @@ from matplotlib import cm
 from goesvideo.utils import gistools, editortools
 
 """
-The Overlay class is intended to produce composite images from a base set of images (typically a static/dynamicvisible 
-satellite image of an area or a map) and one or more overlay sets (e.g. fire detection). The image sets should all cover 
-the same time frame, but they do not require exactly matching timestamps. The class will set the time interval between 
-frames to the lowest possible value given base and overlay image sets with each set assumed to contain images with a 
-constant time interval. The image sets with higher time intervals will be filled with redundant frames as required to 
-match the lowest interval.
+The Overlay class is intended to produce composite images from a base set of images (typically a 
+static/dynamic visible satellite image of an area or a map) and one or more overlay sets 
+(e.g. fire detection). The image sets should all cover the same time frame, but they do not require 
+exactly matching timestamps. The class will set the time interval between frames to the lowest 
+possible value given base and overlay image sets with each set assumed to contain images with a 
+constant time interval. The image sets with higher time intervals will be filled with redundant 
+frames as required to match the lowest interval.
 """
 
 
@@ -38,30 +39,38 @@ class Overlay:
         end_time=None,
     ):
         """
-        @param baseimgpath: (str) path to folder or file to use for base image(s). If a folder is provided
-                                  the object instance will be initialized using all available geotiffs or pngs
-                                  in the folder and the base image will be dyanmic. If a single file or
-                                  a folder containing a single file is provided, the base image will be static
-        @param overlaypaths: (list) paths to folders containing overlay images. Provide one path for each desired
-                                    overlay set; *images must be geotiff format*
-        @param base_timezone: (dict) {'timezone': (pytz tz obj), 'filename format': (str)} Image filenames must be
-                                     provided as datetimes. The format can be anything as long as it is specified here
-                                     (e.g. "YYYY-MM-DD HH:mm:ss"). If parameter is not specified, UTC will be used for
-                                     the timezone and the function will attempt to convert the filenames on its own
-                                     assuming isoformat strings with dash and underscore separators ("YYYY-MM-DD hh_mm_ss").
-        @param overlay_timezones: (dict) {'timezone': [(pytz tz obj)], 'filename format': [(str)]} Image filenames must
-                                         be provided as datetimes. The format can be anything as long as it is specified
-                                         here (e.g. "YYYY-MM-DD HH:mm:ss"). If parameter is not specified, UTC will be used for
-                                         the timezone and the function will attempt to convert the filenames assuming
-                                         isoformat strings. Provide one timezone and one format for each overlay set.
-        @param start_time: (str) isoformat datetime start time, by default, timezone is assumed to be the same as that
-                                 provided by base_timezone. This behavior can be overridden by including the offset in the
-                                 datetime string (e.g. '2023-01-01 12:00:00-03:00'). If not provided, the default behavior
-                                 is to use all available images in specified folders.
-        @param end_time: (str) isoformat datetime end time, by default, timezone is assumed to be the same as that
-                                 provided by base_timezone. This behavior can be overridden by including the offset in the
-                                 datetime string (e.g. '2023-01-01 12:00:00-03:00'). If not provided, the default behavior
-                                 is to use all available images in specified folders.
+        @param baseimgpath: (str) path to folder or file to use for base image(s). If a folder is
+                                  provided the object instance will be initialized using all
+                                  available geotiffs or pngs in the folder and the base image will
+                                  be dyanmic. If a single file or a folder containing a single file
+                                  is provided, the base image will be static
+        @param overlaypaths: (list) paths to folders containing overlay images. Provide one path for
+                                    each desired overlay set; *images must be geotiff format*
+        @param base_timezone: (dict) {'timezone': (pytz tz obj), 'filename format': (str)} Image
+                                     filenames must be provided as datetimes. The format can be
+                                     anything as long as it is specified here
+                                     (e.g. "YYYY-MM-DD HH:mm:ss"). If parameter is not specified,
+                                     UTC will be used for the timezone and the function will attempt
+                                     to convert the filenames on its own assuming isoformat strings
+                                     with dash and underscore separators ("YYYY-MM-DD hh_mm_ss").
+        @param overlay_timezones: (dict) {'timezone': [(pytz tz obj)], 'filename format': [(str)]}
+                                         Image filenames must be provided as datetimes. The format
+                                         can be anything as long as it is specified here
+                                         (e.g. "YYYY-MM-DD HH:mm:ss"). If parameter is not
+                                         specified, UTC will be used for the timezone and the
+                                         function will attempt to convert the filenames assuming
+                                         isoformat strings. Provide one timezone and one format for
+                                         each overlay set.
+        @param start_time: (str) isoformat datetime start time, by default, timezone is assumed to
+                                 be the same as that provided by base_timezone. This behavior can
+                                 be overridden by including the offset in the datetime string
+                                 (e.g. '2023-01-01 12:00:00-03:00'). If not provided, the default
+                                 behavior is to use all available images in specified folders.
+        @param end_time: (str) isoformat datetime end time, by default, timezone is assumed to be
+                               the same as that provided by base_timezone. This behavior can be
+                               overridden by including the offset in the datetime string
+                               (e.g. '2023-01-01 12:00:00-03:00'). If not provided, the default
+                               behavior is to use all available images in specified folders.
 
         """
         # Check start and end time parameters
@@ -82,10 +91,12 @@ class Overlay:
         print(
             f"{Fore.GREEN} Filtering images and copying to working folders...", end=""
         )
-        # Copy base image files to working folder and filter list of filenames to match start and end times
+        # Copy base image files to working folder and filter list of filenames to match start and
+        # end times
         self._setup_base_imgs(baseimgpath, base_timezone, start_time, end_time)
 
-        # Copy overlay image files to working folders and filter filename lists to match start and end times
+        # Copy overlay image files to working folders and filter filename lists to match start and
+        # end times
         self._setup_overlay_imgs(overlaypaths, overlay_timezones, start_time, end_time)
 
         # Match lengths of overlay image arrays to the length of the base array
@@ -140,23 +151,27 @@ class Overlay:
         @param outpath: (str) path to save output images
         @param out_crs: (rasterio.crs.CRS obj) CRS to use for output images
         @param res: (tup) desired output resolution (width, height)
-        @param bbox: (list) [minx, maxy, maxx, miny] in lat/lon coords. If provided, an attempt will be made to crop
-                            the base and overlay images to specified bounds. In the event that the provided bbox overlaps
-                            partially or not at all with one or more image sets, the default behavior will be to find
-                            the maximum common bounds shared by all the image sets. The maximum common bounds will also
-                            be used if the bbox parameter is not specified. Note that if pngs are used for the base image
-                            set, the assumption is that the user has ensured that the image extents already match those
+        @param bbox: (list) [minx, maxy, maxx, miny] in lat/lon coords. If provided, an attempt will
+                            be made to crop the base and overlay images to specified bounds. In the
+                            event that the provided bbox overlaps partially or not at all with one
+                            or more image sets, the default behavior will be to find the maximum
+                            common bounds shared by all the image sets. The maximum common bounds
+                            will also be used if the bbox parameter is not specified. Note that if
+                            pngs are used for the base image set, the assumption is that the user
+                            has ensured that the image extents already match those
                             defined by the overlay geotiffs.
-        @param overlay_opacities: (list) Opacities of overlay layers. Provide one value (0-1) for each overlay set.
-                                         Default is value of 1.
+        @param overlay_opacities: (list) Opacities of overlay layers. Provide one value (0-1) for
+                                         each overlay set. Default is value of 1.
         @param overlay_resample: (bool) Enable resampling of overlay image set(s) upon resizing
         @param base_resample:  (bool) Enable resampling of base image set upon resizing
-        @param save_overlays_gtiff: (str) Path to folder for saving individual overlay frames as separate geotiffs.
-                                          Default is to discard after compositing with base image.
-        @param cumulative: (bool) If true, a cumulative overlay sequence will be generated over the base frame(s)
-        @param cumulative_colormap: (matplotlib.cm obj) If a colormap is provided, the frame sequence will automatically
-                                                        be set to cumulative and the color applied to each overlay will
-                                                        be incremented at each frame.
+        @param save_overlays_gtiff: (str) Path to folder for saving individual overlay frames as
+                                          separate geotiffs. Default is to discard after compositing
+                                          with base image.
+        @param cumulative: (bool) If true, a cumulative overlay sequence will be generated over the
+                                  base frame(s)
+        @param cumulative_colormap: (matplotlib.cm obj) If a colormap is provided, the frame
+                                    sequence will automatically be set to cumulative and the color
+                                    applied to each overlay will be incremented at each frame.
         @param output_format: (str) options are 'simple_image' which will produce pngs or 'geotiff'
         @return: None
         """
@@ -202,8 +217,8 @@ class Overlay:
                 f" overlay images. Final images will be smaller than expected."
             )
             err3 = (
-                f"{Fore.RED} WARNING! Provided bbox does not overlap with all overlay sets. Using maximal "
-                f"common bounds of the images instead."
+                f"{Fore.RED} WARNING! Provided bbox does not overlap with all overlay sets. Using "
+                f"maximal common bounds of the images instead."
             )
 
             if not all([x == bbox for x in _bbox_list]):
@@ -226,17 +241,18 @@ class Overlay:
                         bbox = bbox1
         elif bbox and not self.base_is_geotiff:
             print(
-                f"{Fore.RED} WARNING! Simple image(s) provided as base. Overlay images are assumed to match the "
-                f"lat/lon bounds of the base image(s). For most accurate results, provide geotiff(s) for base set."
+                f"{Fore.RED} WARNING! Simple image(s) provided as base. Overlay images are assumed "
+                f"to match the lat/lon bounds of the base image(s). For most accurate results, "
+                f"provide geotiff(s) for base set."
             )
         else:
             bbox = gistools.get_max_bbox(
                 self.base_bbox_latlon, self.overlay_bbox_latlon
             )
 
-        # If user does not provide an output CRS then try to use the base image CRS first; if that isn't
-        # available (e.g. due to pngs being used for the base image) then default to the CRS of the first
-        # overlay set
+        # If user does not provide an output CRS then try to use the base image CRS first; if that
+        # isn't available (e.g. due to pngs being used for the base image) then default to the CRS
+        # of the first overlay set
         if not out_crs:
             if self.base_crs:
                 out_crs = self.base_crs
@@ -247,8 +263,8 @@ class Overlay:
         if self.base_is_geotiff:
             if self.base_crs != out_crs:
                 print(
-                    f"{Fore.RED} WARNING! Projection of base image(s) does not match the output CRS."
-                    f" Converting..."
+                    f"{Fore.RED} WARNING! Projection of base image(s) does not match the output "
+                    f"CRS. Converting..."
                 )
                 for f in tqdm(self.baseimgfiles, desc="Image Number: ", colour="blue"):
                     gistools.reproject(f, out_crs)
@@ -257,8 +273,8 @@ class Overlay:
         for i, overlay in enumerate(self.overlayimgfiles):
             if self.overlay_crs[i] != out_crs:
                 print(
-                    f"{Fore.RED} WARNING! Projection of overlay images at index {str(i)} does not match the"
-                    f" output CRS. Converting..."
+                    f"{Fore.RED} WARNING! Projection of overlay images at index {str(i)} does not "
+                    f"match the output CRS. Converting..."
                 )
                 for f in tqdm(overlay, desc="Image Number: ", colour="blue"):
                     gistools.reproject(f, out_crs)
@@ -487,7 +503,8 @@ class Overlay:
 
         if gtiffs and pngs:
             print(
-                f"{Fore.RED} WARNING: Multiple image formats found in base image folder. Using geotiffs..."
+                f"{Fore.RED} WARNING: Multiple image formats found in base image folder. Using "
+                f"geotiffs..."
             )
             self.base_is_geotiff = True
             for file in gtiffs:
@@ -549,8 +566,8 @@ class Overlay:
             ] * len(overlaypaths)
 
         err = (
-            f"{Fore.RED} ERROR: Using the `overlay_timezones` parameter requires all or none of the timezones and/or"
-            f"filename formats to be specified. Exiting..."
+            f"{Fore.RED} ERROR: Using the `overlay_timezones` parameter requires all or none of the "
+            f"timezones and/or filename formats to be specified. Exiting..."
         )
 
         if len(self.overlays_tz) != len(overlaypaths) or len(
@@ -731,13 +748,13 @@ class Overlay:
     def _bbox_error_msg(self, coord, index=None):
         if not index:
             err = (
-                f"{Fore.RED} WARNING! Provided bbox {coord} extent is beyond the bounds of the base image. Using "
-                f"image bounds instead."
+                f"{Fore.RED} WARNING! Provided bbox {coord} extent is beyond the bounds of the base "
+                f"image. Using image bounds instead."
             )
         else:
             err = (
-                f"{Fore.RED} WARNING! Provided bbox {coord} extent is beyond the bounds of the overlay image at "
-                f"index {str(index)}. Using image bounds instead."
+                f"{Fore.RED} WARNING! Provided bbox {coord} extent is beyond the bounds of the "
+                f"overlay image at index {str(index)}. Using image bounds instead."
             )
         return err
 
@@ -745,7 +762,8 @@ class Overlay:
     def _calculate_interval(files, formatdicts, tz=None):
         """
         Calculate interval in seconds between two files
-        @param files: (tup) tuple of filenames containing datetime strings (e.g. '2023-01-01 10_43_00')
+        @param files: (tup) tuple of filenames containing datetime strings
+                      (e.g. '2023-01-01 10_43_00')
         @param formatdicts: (tup) tuple of dicts containing indices returned by _time_format_str
         @param tz: (tup) tuple of pytz timezone objects
         @return: interval between two files in seconds

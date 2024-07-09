@@ -1,27 +1,27 @@
 import os
+import sys
 import json
 from pathlib import Path
 import shutil
-import sys
+import csv
 import tempfile
 import time
-import urllib3
-import uuid
-import yaml
-import csv
 import hashlib
 from importlib.resources import files
 from copy import deepcopy
 from datetime import datetime, timedelta
 
+import uuid
+import yaml
+import urllib3
 import pytz
 import boto3
-import satpy
-import satpy.utils
 import botocore.exceptions
 import boto3.exceptions
 from botocore import UNSIGNED
 from botocore.config import Config
+import satpy
+import satpy.utils
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
@@ -79,15 +79,15 @@ class GoesBase:
             if "FDC" not in product:
                 self.product = product
                 print(
-                    f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' or 'C' "
-                    f"indicating region."
+                    f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' or "
+                    f"'C' indicating region."
                 )
             else:
                 if "FDCC" in product or "FDCF" in product:
                     self.product = product
                     print(
-                        f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' or 'C' "
-                        f" indicating region."
+                        f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' "
+                        f"or 'C' indicating region."
                     )
                 else:
                     if self.region == "conus":
@@ -113,8 +113,8 @@ class GoesBase:
             if scenename not in self.band_list:
                 print()
                 print(
-                    f"{Fore.RED} WARNING - Could not find scene name in 'abibands.yaml'. If results are unexpected, try"
-                    f" adding this scene to the yaml file."
+                    f"{Fore.RED} WARNING - Could not find scene name in 'abibands.yaml'. If results "
+                    f"are unexpected, try adding this scene to the yaml file."
                 )
 
         return req_bands
@@ -171,7 +171,8 @@ class GoesBase:
     def _filter_by_interval(self, filedict, interval):
         """
         Filters a file dictionary spanning a time range using the specified interval
-        @param filedict: (dict) filenames aggregated by band identifier (e.g. {'C01': [<filenames>], 'C02':...}
+        @param filedict: (dict) filenames aggregated by band identifier (e.g. {'C01': [<filenames>],
+               'C02':...}
         @param interval: (int) desired time interval between nc file end times in minutes
         @return: (dict) filtered dict of filenames
         """
@@ -238,7 +239,8 @@ class GoesDownloader(GoesBase):
             self.datapath.mkdir(exist_ok=True)
         else:
             print(
-                f"{Fore.RED} WARNING - No base directory provided. Data will be saved to current working directory."
+                f"{Fore.RED} WARNING - No base directory provided. Data will be saved to current "
+                f"working directory."
             )
             self.basedir = Path.cwd()
             self.datapath = self.basedir / "GoesVideo - Data"
@@ -422,11 +424,13 @@ class GoesDownloader(GoesBase):
                 diff = length_compare - length
                 if diff > 0:
                     print(
-                        f"{Fore.RED} WARNING - Band '{key}' is missing {str(diff)} data files on AWS."
+                        f"{Fore.RED} WARNING - Band '{key}' is missing {str(diff)} data files on "
+                        f"AWS."
                     )
                 else:
                     print(
-                        f"{Fore.RED} WARNING - Band '{key}' has {str(diff)} extra data files on AWS."
+                        f"{Fore.RED} WARNING - Band '{key}' has {str(diff)} extra data files on "
+                        f"AWS."
                     )
 
         # Check which remote files are already available locally
@@ -623,7 +627,8 @@ class GoesDownloader(GoesBase):
                 sz = sz / 1000
                 if not force:
                     ask = input(
-                        f"{Fore.RED} WARNING - Requested files have total size of {str(int(sz))} GB. Proceed? (Y/N): "
+                        f"{Fore.RED} WARNING - Requested files have total size of {str(int(sz))} "
+                        f"GB. Proceed? (Y/N): "
                     )
                 else:
                     ask = "Y"
@@ -634,7 +639,8 @@ class GoesDownloader(GoesBase):
                 print()
                 if sz != 0:
                     print(
-                        f"{Fore.GREEN}Downloading {str(len(filenames))} file(s) with total size {str(int(sz))} MB..."
+                        f"{Fore.GREEN}Downloading {str(len(filenames))} file(s) with total size "
+                        f"{str(int(sz))} MB..."
                     )
                 else:
                     print(f"{Fore.GREEN}Downloading {str(len(filenames))} file(s)...")
@@ -719,7 +725,8 @@ class GoesDownloader(GoesBase):
                         if tries > maxtries:
                             print()
                             print(
-                                f"{Fore.RED} ERROR - Download failed for file: {file}. Skipping this file."
+                                f"{Fore.RED} ERROR - Download failed for file: {file}. Skipping "
+                                f"this file."
                             )
                             total_failures += tries
                             break
@@ -727,7 +734,8 @@ class GoesDownloader(GoesBase):
                             break
 
     def _check_existing(self):
-        """Returns list of existing nc data files stored locally and removes any partial files from the datapath"""
+        """Returns list of existing nc data files stored locally and removes any partial files
+        from the datapath"""
         existing = []
         for file in self.datapath.iterdir():
             if file.is_file():
@@ -799,7 +807,8 @@ class GoesCompositor(GoesBase):
 
         if not base_dir:
             print(
-                f"{Fore.RED} WARNING - No base directory provided. Images will be saved to current working directory. "
+                f"{Fore.RED} WARNING - No base directory provided. Images will be saved to current "
+                f"working directory. "
                 f"Any existing data files will not be available for compositing."
             )
             self.base_dir = Path.cwd()
@@ -849,30 +858,37 @@ class GoesCompositor(GoesBase):
                            (xmin, ymax, xmax, ymin)
         @param interval: (int) desired interval in minutes between composite images
         @param output_format: (str) file format for output images (e.g. 'simple_image', 'geotiff')
-        @param keep_filenames: (bool) If true, output images will be saved using the original nc filename template.
-                                      Otherwise, ouput images will be saved using a more readable timestamp. Timezone
-                                      info for the timestamp can be provided using the 'tzinfo' parameter, if desired.
-        @param folder_name: (str) Desired name of the subfolder to which images will be saved. If none is provided a
-                                  random name will be generated.
-        @param tzinfo: (tup) timezone info for generating readable output filenames, provided as a tuple containing
-                             a pytz timezone object and 3 character timezone abbreviation. If not provided, filenames
-                             generated when 'keep_filenames' is True will be returned as UTC
-        @param coastlines: (bool) If true, coastlines will be added to the output images. Options for coastlines can
-                                  be set beforehand by calling 'set_coastlines_options'
-        @param resampling: (tup) Resampling options for satpy resampler provided as a tuple containing the
-                                 resampling area and resampler method to use. Options for the resampling area include
-                                 'finest', 'coarsest', 'lowest area' or an area explictly defined in the satpy
-                                 areas.yaml file. If not provided, 'finest' is used as the default area. This typically
-                                 works well and produces a high quality image. However, it can fail for some composites
-                                 such as those with day-night features. The default behavior is for the function to
-                                 attempt using 'finest' and if that fails then fall back to 'lowest area'. The options
-                                 for the resampler method include 'native', 'nearest', etc. To disable resampling completely
+        @param keep_filenames: (bool) If true, output images will be saved using the original nc
+                                      filename template.Otherwise, ouput images will be saved using
+                                      a more readable timestamp. Timezone info for the timestamp
+                                      can be provided using the 'tzinfo' parameter, if desired.
+        @param folder_name: (str) Desired name of the subfolder to which images will be saved. If
+                                  none is provided a random name will be generated.
+        @param tzinfo: (tup) timezone info for generating readable output filenames, provided as a
+                             tuple containing a pytz timezone object and 3 character timezone
+                             abbreviation. If not provided, filenames generated when
+                             'keep_filenames' is True will be returned as UTC
+        @param coastlines: (bool) If true, coastlines will be added to the output images. Options
+                                  for coastlines must be set beforehand by calling
+                                  'set_coastlines_options'
+        @param resampling: (tup) Resampling options for satpy resampler provided as a tuple
+                                 containing the resampling area and resampler method to use.
+                                 Options for the resampling area include 'finest', 'coarsest',
+                                 'lowest area' or an area explictly defined in the satpy
+                                 areas.yaml file. If not provided, 'finest' is used as the default
+                                 area. This typically works well and produces a high quality image.
+                                 However, it can fail for some composites such as those with
+                                 day-night features. The default behavior is for the function to
+                                 attempt using 'finest' and if that fails then fall back to
+                                 'lowest area'. The options for the resampler method include
+                                 'native', 'nearest', etc. To disable resampling completely
                                  pass a tup containing ('none', 'none').
         @param force: (bool) If true, forces completion of function bypassing any
                              input prompts
-        @param delete_data (bool) If true, function will delete all underlying datasets used to produce composites upon
-                                  completion
-        @param kwargs: (dict) function keyword arguments and/or kwargs to be passed to satpy compositor
+        @param delete_data (bool) If true, function will delete all underlying datasets used to
+                                  produce composites upon completion
+        @param kwargs: (dict) function keyword arguments and/or kwargs to be passed to satpy
+                              compositor
         @return: None
         """
 
@@ -902,7 +918,8 @@ class GoesCompositor(GoesBase):
         kwargs["resampling"] = resampling
 
         # Gather local data required to produce scene or offer to download it
-        # Update local and remote file lists and see which remote files are needed to prepare the scene
+        # Update local and remote file lists and see which remote files are needed to prepare
+        # the scene
         needed_files, sizes, etags = self.downloader.check_for_needed_files(
             start_time, end_time, scenename=scenename, interval=interval
         )
@@ -931,7 +948,8 @@ class GoesCompositor(GoesBase):
                 if len(needed_files) > 0:
                     print()
                     print(
-                        f"{Fore.RED} ERROR - There was a problem downloading the necessary files. Exiting..."
+                        f"{Fore.RED} ERROR - There was a problem downloading the necessary files. "
+                        f"Exiting..."
                     )
                     sys.exit(0)
             else:
@@ -947,8 +965,8 @@ class GoesCompositor(GoesBase):
             if not force:
                 print()
                 ask = input(
-                    f"{Fore.RED} WARNING - Image subfolder provided by the 'folder_name' argument already exists."
-                    f" Existing images will be overwritten! Continue anyway? (Y/N): "
+                    f"{Fore.RED} WARNING - Image subfolder provided by the 'folder_name' argument "
+                    f"already exists. Existing images will be overwritten! Continue anyway? (Y/N): "
                 )
             else:
                 ask = "Y"
@@ -1058,8 +1076,8 @@ class GoesCompositor(GoesBase):
                     except OSError as e:
                         print()
                         print(
-                            f"{Fore.RED} ERROR - Encountered a corrupted data file while generating composite. Attempting"
-                            f" to download it again..."
+                            f"{Fore.RED} ERROR - Encountered a corrupted data file while generating "
+                            f"composite. Attempting to download it again..."
                         )
                         print(e)
                         p = Path(e.filename)
@@ -1078,8 +1096,8 @@ class GoesCompositor(GoesBase):
                         except OSError:
                             print()
                             print(
-                                f"{Fore.RED} ERROR - Still having an issue with this file after downloading it "
-                                f"again. Skipping..."
+                                f"{Fore.RED} ERROR - Still having an issue with this file after "
+                                f"downloading it again. Skipping..."
                             )
                             skip = True
 
@@ -1100,9 +1118,9 @@ class GoesCompositor(GoesBase):
                     idx = _area_list.index(min(_area_list))
                     minkey = _key_list[idx]
 
-                    # Resample scene - default behavior is to try resampling at finest area, this fails for some scenes
-                    # however, so if it does we'll fall back to the lowest area in the scene. Otherwise, use the
-                    # area and resampler provided by the user
+                    # Resample scene - default behavior is to try resampling at finest area, this
+                    # fails for some scenes however, so if it does we'll fall back to the lowest
+                    # area in the scene. Otherwise, use the area and resampler provided by the user
                     if not resample:
                         try:
                             new_scene = scene.resample(
@@ -1149,9 +1167,9 @@ class GoesCompositor(GoesBase):
                     if bbox:
                         new_scene = new_scene.crop(ll_bbox=bbox)
 
-                    # If keep_filenames, the original template found in the nc data file will be used
-                    # for saving the images. Otherwise, an isoformat time string will be used as the
-                    # filename template
+                    # If keep_filenames, the original template found in the nc data file will be
+                    # used for saving the images. Otherwise, an isoformat time string will be used
+                    # as the filename template
                     if keep_filenames:
                         repl = filenames[0].split("\\")[-1].split("_")[1]
                         substr = repl.split("-")
@@ -1262,8 +1280,9 @@ class GoesAnimator(GoesBase):
 
         if not base_dir:
             print(
-                f"{Fore.RED} WARNING - No base directory provided. Videos will be saved to current working directory. "
-                f"Any existing data files will not be available for compositing/animating."
+                f"{Fore.RED} WARNING - No base directory provided. Videos will be saved to current "
+                f"working directory. Any existing data files will not be available for "
+                f"compositing/animating."
             )
             self.base_dir = Path.cwd()
             self.imgsvpath = self.base_dir / "GoesVideo - Images"
@@ -1308,19 +1327,19 @@ class GoesAnimator(GoesBase):
         **kwargs,
     ):
         """
-        Generates a quick preview image. Accepts kwargs for the create_composites and create_video functions. This
-        function is useful for sizing and positioning text and other annotations prior to compositing the entire
-        time series of images. It is advisable to use the same resolution as that intended for the final output
-        video when using this function.
+        Generates a quick preview image. Accepts kwargs for the create_composites and create_video
+        functions. This function is useful for sizing and positioning text and other annotations
+        prior to compositing the entire time series of images. It is advisable to use the same
+        resolution as that intended for the final output video when using this function.
 
         @param scenename: (str) satpy scene name
-        @param utctime: (str) isoformat datetime target for image in UTC; if not given the function will use
-                              the current time as search target. Note that the returned image will be within
-                              a window of +/- 2 hours of the target.
-        @param use_cached: (bool) if true, will attempt to find a pre-existing local dataset/image to use for
-                            generating the preview image
-        @param use_image_file: (str) if desired, a specific image can be used for generating the preview
-                                     image by supplying a filepath
+        @param utctime: (str) isoformat datetime target for image in UTC; if not given the function
+                              will use the current time as search target. Note that the returned
+                              image will be within a window of +/- 2 hours of the target.
+        @param use_cached: (bool) if true, will attempt to find a pre-existing local dataset/image
+                                  to use for generating the preview image
+        @param use_image_file: (str) if desired, a specific image can be used for generating the
+                                     preview image by supplying a filepath
         @param display: (bool) if false, the preview image will not be automatically displayed
         @param kwargs: (dict) image-related keywords for 'create_video' and/or compositor keywords
         @return: PIL Image
@@ -1386,9 +1405,9 @@ class GoesAnimator(GoesBase):
                         except KeyError:
                             pass
 
-                # Loop through existing data files checking to see if there are any that are within 2 hours
-                # of the requested time. Also, ensure that all data files required to produce scene are
-                # available. If they are, then set the ideal_data flag to True
+                # Loop through existing data files checking to see if there are any that are within
+                # 2 hours of the requested time. Also, ensure that all data files required to
+                # produce scene are available. If they are, then set the ideal_data flag to True
 
                 req_bands_pop = req_bands
                 data_files = self.tmpdir.glob("*.nc")
@@ -1411,8 +1430,8 @@ class GoesAnimator(GoesBase):
                                 ideal_data = True
                                 break
 
-                # Get ideal image if it is available and compositing is not required. Otherwise, call the
-                # compositor to generate an image
+                # Get ideal image if it is available and compositing is not required. Otherwise,
+                # call the compositor to generate an image
                 imgname = None
                 img = None
                 if ideal_imgs and not compositor_reqd:
@@ -1523,56 +1542,71 @@ class GoesAnimator(GoesBase):
     ):
         """
         Creates a video from GOES image composites. Function can try to find local and/or remote
-        data files needed to produce the specified scene, or can look in local folders for existing composite
-        images by using the 'from_existing_imgs' argument. The function may produce multiple videos if the
-        'from_existing_imgs' argument is used.
+        data files needed to produce the specified scene, or can look in local folders for existing
+        composite images by using the 'from_existing_imgs' argument. The function may produce
+        multiple videos if the 'from_existing_imgs' argument is used.
 
-        **NOTE: This function relies on the base class having access to a file entitled 'abibands.yaml'. This file
-        is a simplified version of the satpy configuration file entitled 'abi.yaml'. The user may customize the
-        'abibands.yaml' to match any customizations made to 'abi.yaml'. The former file simply maps the required
-        ABI bands for each scene.
+        **NOTE: This function relies on the base class having access to a file entitled
+        'abibands.yaml'. This file is a simplified version of the satpy configuration file entitled
+        'abi.yaml'. The user may customize the 'abibands.yaml' to match any customizations made to
+        'abi.yaml'. The former file simply maps the required ABI bands for each scene.
 
-        @param scenename: (str) satpy scenename or 'available' (only when using 'from_existing_imgs')
+        @param scenename: (str) satpy scenename or 'available' (only when using
+                                'from_existing_imgs')
         @param start_time: (str) isoformat datetime for GOES imagery in video
         @param end_time: (str) isoformat datetime for GOES imagery in video
-        @param from_existing_imgs: (bool) If true, will automatically search through subfolders in the Images directory
-                                          to determine which ones have not yet been converted to videos. Then, the
-                                          function attempts to generate videos corresponding to the requested scene
-                                          using the existing images. If the requested scene cannot be made using the
-                                          existing images, the user will be prompted to answer if they would like all
-                                          available scenes to be made instead. The user can also request all available
-                                          scenes be made from existing images using 'available' for the scenename
-                                          parameter.
+        @param from_existing_imgs: (bool) If true, will automatically search through subfolders in
+                                          the Images directory to determine which ones have not yet
+                                          been converted to videos. Then, the function attempts to
+                                          generate videos corresponding to the requested scene
+                                          using the existing images. If the requested scene cannot
+                                          be made using the existing images, the user will be
+                                          prompted to answer if they would like all available
+                                          scenes to be made instead. The user can also request all
+                                          available scenes be made from existing images using
+                                          'available' for the scenename parameter.
         @param interval: (int) time interval between GOES images in video in minutes
         @param bbox: (tup) tuple of floats specifying crop region in latitude-longitude coordinates
                            (xmin, ymax, xmax, ymin)
-        @param timestamps: (dict) add timestamps to each frame of the video. Dictionary should be provided as follows:
-                                  {'position': (tup) or (str) position of timestamp label can be specified by giving
-                                                              a precise ((int) x, (int) y) position or by using
-                                                              'upper-left, 'upper-center', 'upper-right', 'lower-left',
-                                                              'lower-center, lower-right' (required),
+        @param timestamps: (dict) add timestamps to each frame of the video. Dictionary should be
+                                  provided as follows:
+                                  {'position': (tup) or (str) position of timestamp label can be
+                                                              specified by giving a precise
+                                                              ((int) x, (int) y) position or by
+                                                              using 'upper-left, 'upper-center',
+                                                              'upper-right', 'lower-left',
+                                                              'lower-center, lower-right'
+                                                              (required),
                                    'fontpath': (str) path to ttf file (required),
                                    'fontcolor': (tup) RGB color of font in range 0-255,
                                    'fontsize': (int) fontsize in pixels,
-                                   'timezone': (tup) ((object) pytz timezone, (str) timezone abbreviation (e.g. 'CST'))
+                                   'timezone': (tup) ((object) pytz timezone, (str) timezone
+                                                     abbreviation (e.g. 'CST'))
                                   }
-        @param coastlines: (bool) Show coastlines on images used for the video. Coastline options can be changed from
-                                  their default values via the accessor GoesVideo.GoesCompositor.set_coastlines_options()
-        @param cmap: (str) Matplotlib colormap name or path to a json file containing a colormap produced using the
-                           online app at https://sciviscolor.org/color-moves-app/
-        @param text: (dict) add custom text to each frame of the video. Dictionary should be provided with the same
-                            keywords used for the timestamps parameter except without the 'timezone' key. The text
-                            string to be displayed should be assigned to a new 'label' key.
-        @param res: (str or tup) desired resolution for the video. Can be a tuple of ints (w, h) specifying width and
-                                 height or 'auto' to optimally size the video for most displays while maintaining the
-                                 aspect ratio of the images or 'full' to retain the resolution of the input images
+        @param coastlines: (bool) Show coastlines on images used for the video. Coastline options
+                                  can be changed from their default values via the accessor
+                                  GoesVideo.GoesCompositor.set_coastlines_options()
+        @param cmap: (str) Matplotlib colormap name or path to a json file containing a colormap
+                           produced using the online app at https://sciviscolor.org/color-moves-app/
+        @param text: (dict) add custom text to each frame of the video. Dictionary should be
+                            provided with the same
+                            keywords used for the timestamps parameter except without the 'timezone'
+                            key. The text string to be displayed should be assigned to a new 'label'
+                            key.
+        @param res: (str or tup) desired resolution for the video. Can be a tuple of ints (w, h)
+                                 specifying width and height or 'auto' to optimally size the video
+                                 for most displays while maintaining the aspect ratio of the images
+                                 or 'full' to retain the resolution of the input images
         @param fps: (int) frames per second for the video
         @param codec: (str) FFMPEG codec (e.g. 'mpeg4', 'avi')
-        @param delete_images: (bool) If true, function will delete all images used to produce the video upon completion
-        @param delete_data: (bool) If true, function will delete all underlying datasets used to produce the video upon
-                                   completion
-        @param force: (bool) If true, any user inputs will be supressed and the function will be forced to completion
-        @param kwargs: (dict) function keyword arguments and/or kwargs to be passed to GoesCompositor.create_composites
+        @param delete_images: (bool) If true, function will delete all images used to produce the
+                                     video upon completion
+        @param delete_data: (bool) If true, function will delete all underlying datasets used to
+                                   produce the video upon completion
+        @param force: (bool) If true, any user inputs will be supressed and the function will be
+                             forced to completion
+        @param kwargs: (dict) function keyword arguments and/or kwargs to be passed to
+                              GoesCompositor.create_composites
         @return: None
         """
         # Check timestamps
@@ -1610,8 +1644,8 @@ class GoesAnimator(GoesBase):
                         f"compositor when using 'from_existing_imgs'."
                     )
 
-        # If user wants to use existing image folders, need to check that folder exists in the current directory.
-        # Also, need to make sure that the requested scene can be generated.
+        # If user wants to use existing image folders, need to check that folder exists in the
+        # current directory. Also, need to make sure that the requested scene can be generated.
         img_folders = []
         if from_existing_imgs:
             self._populate_existing_imgs()
@@ -1619,9 +1653,9 @@ class GoesAnimator(GoesBase):
                 print()
                 if not force:
                     ask = input(
-                        f"{Fore.RED}ERROR - Requested scene is not available for any of the existing image folders. \n"
-                        f" Would you like to continue and produce videos for all available scenes in the existing \n"
-                        f" image folders? (Y/N): "
+                        f"{Fore.RED}ERROR - Requested scene is not available for any of the "
+                        f"existing image folders. \nWould you like to continue and produce videos "
+                        f"for all available scenes in the existing \nimage folders? (Y/N): "
                     )
                 else:
                     ask = "Y"
@@ -1697,8 +1731,8 @@ class GoesAnimator(GoesBase):
                     if files and not ask_done:
                         if not force:
                             ask = input(
-                                f"{Fore.RED} WARNING - Some videos already exist. Do you still want to proceed "
-                                f" and overwrite them? (Y/N): "
+                                f"{Fore.RED} WARNING - Some videos already exist. Do you still want "
+                                f"to proceed and overwrite them? (Y/N): "
                             )
                         else:
                             ask = "Y"
@@ -1736,7 +1770,8 @@ class GoesAnimator(GoesBase):
                 except FileNotFoundError:
                     print()
                     print(
-                        f"{Fore.RED}WARNING - Could not find metadata.json in existing image path: {str(folder)}"
+                        f"{Fore.RED}WARNING - Could not find metadata.json in existing image path: "
+                        f"{str(folder)}"
                     )
 
         else:
@@ -1837,7 +1872,8 @@ class GoesAnimator(GoesBase):
                     os.remove(f)
 
     def list_existing_image_dirs(self):
-        """Prints a list of existing directories found to contain image folders within the base directory"""
+        """Prints a list of existing directories found to contain image folders within the base
+        directory"""
         for item in self.existing_img_dirs:
             print(item)
         return self.existing_img_dirs
@@ -1875,7 +1911,8 @@ class GoesAnimator(GoesBase):
 
     @staticmethod
     def _get_timestamps(csvfile):
-        """Extracts timestamps for images listed in the timestamps.csv file found in existing image directories"""
+        """Extracts timestamps for images listed in the timestamps.csv file found in existing image
+        directories"""
         tstamps_list = []
         filenames_list = []
         with open(str(csvfile), newline="") as file:
@@ -1933,7 +1970,8 @@ class GoesAnimator(GoesBase):
                 except FileNotFoundError:
                     print()
                     print(
-                        f"{Fore.RED}WARNING - Could not find metadata.json in existing image path: {str(path)}"
+                        f"{Fore.RED}WARNING - Could not find metadata.json in existing image path: "
+                        f"{str(path)}"
                     )
 
         return

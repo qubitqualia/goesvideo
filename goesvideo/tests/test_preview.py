@@ -11,6 +11,10 @@ from goesvideo import GoesAnimator
 
 
 def test_preview():
+
+    # Toggle display of image
+    show_image = True
+
     tmpfolder = tempfile.TemporaryDirectory()
     tmppath = Path(tmpfolder.name)
 
@@ -85,7 +89,9 @@ def test_preview():
 
     assert isinstance(img, Image.Image)
 
-    img.show()
+    if show_image:
+        img.show()
+
     return
 
 

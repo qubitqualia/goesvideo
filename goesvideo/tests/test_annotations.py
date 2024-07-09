@@ -10,6 +10,10 @@ from goesvideo.utils import editortools
 
 
 def test_annotations():
+
+    # Toggle display of output images
+    show_images = True
+
     # Grab test image
     p = importfiles("goesvideo") / "tests" / "Test Images"
 
@@ -87,8 +91,9 @@ def test_annotations():
 
     assert all(isinstance(im, Image.Image) for im in exists)
 
-    for im in exists:
-        im.show()
+    if show_images:
+        for im in exists:
+            im.show()
 
     return
 
