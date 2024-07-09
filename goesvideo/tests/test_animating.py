@@ -1,11 +1,13 @@
-import tempfile
-from pathlib import Path
-from goesvideo import GoesAnimator
-from importlib.resources import files as importfiles
-import shutil
 import os
 import sys
+import tempfile
+from pathlib import Path
+from importlib.resources import files as importfiles
+import shutil
+
 import pytest
+
+from goesvideo import GoesAnimator
 
 
 def test_animating():

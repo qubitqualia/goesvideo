@@ -1,14 +1,20 @@
-from goesvideo import utils
-from PIL import Image
 import sys
-import pytest
 from importlib.resources import files as importfiles
+
+from PIL import Image
+import pytest
 from moviepy.video.VideoClip import VideoClip
+
+from goesvideo.utils import editortools
 
 
 def test_video_edit():
+
+    # Toggle display of output image
+    show_image = True
+
     # Open test video
-    clip = utils.GoesClip(
+    clip = editortools.GoesClip(
         str(importfiles("goesvideo") / "tests" / "Test Videos" / "video.mp4")
     )
 
@@ -33,7 +39,8 @@ def test_video_edit():
     img = clip.preview(tmark=2, **kwargs)
 
     assert isinstance(img, Image.Image)
-    img.show()
+    if show_image:
+        img.show()
 
     return
 

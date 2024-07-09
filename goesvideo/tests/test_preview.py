@@ -1,14 +1,20 @@
+import sys
 import tempfile
 from pathlib import Path
-from goesvideo import GoesAnimator
 from importlib.resources import files as importfiles
+
 from PIL import Image
 import pytest
 import pytz
-import sys
+
+from goesvideo import GoesAnimator
 
 
 def test_preview():
+
+    # Toggle display of image
+    show_image = True
+
     tmpfolder = tempfile.TemporaryDirectory()
     tmppath = Path(tmpfolder.name)
 
@@ -83,7 +89,9 @@ def test_preview():
 
     assert isinstance(img, Image.Image)
 
-    img.show()
+    if show_image:
+        img.show()
+
     return
 
 

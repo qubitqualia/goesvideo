@@ -8,6 +8,10 @@ included to simplify the preparation of images and videos for presentations.
 Note, that the current version has only been tested using Level 2 CMI data. Results may
 be unexpected with other GOES products.
 
+**New in version 2024.1.0**: Overlays can now be generated using a base image set (e.g. GOES-18 visible imagery)
+and one or more overlay sets (e.g. fire detection). This tool is general in scope and does not require GOES data
+products in order to work. 
+
 ## Installation
 ___
 
