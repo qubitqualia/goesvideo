@@ -20,6 +20,7 @@ dependencies = [
     "Pillow>=10.1.0",
     "pytz",
     "PyYAML",
+    "rasterio",
     "satpy>=0.45.0",
     "tqdm",
     "urllib3"
