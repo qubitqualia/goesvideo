@@ -1568,24 +1568,12 @@ class GoesAnimator(GoesBase):
         @param interval: (int) time interval between GOES images in video in minutes
         @param bbox: (tup) tuple of floats specifying crop region in latitude-longitude coordinates
                            (xmin, ymax, xmax, ymin)
-        @param timestamps: (dict) add timestamps to each frame of the video. Dictionary should be
-                                  provided as follows:
-                                  {'position': (tup) or (str) position of timestamp label can be
-                                                              specified by giving a precise
-                                                              ((int) x, (int) y) position or by
-                                                              using 'upper-left, 'upper-center',
-                                                              'upper-right', 'lower-left',
-                                                              'lower-center, lower-right'
-                                                              (required),
-                                   'fontpath': (str) path to ttf file (required),
-                                   'fontcolor': (tup) RGB color of font in range 0-255,
-                                   'fontsize': (int) fontsize in pixels,
-                                   'timezone': (tup) ((object) pytz timezone, (str) timezone
-                                                     abbreviation (e.g. 'CST'))
-                                  }
+        @param timestamps: (bool) Add timestamp to each video frame. The set_timestamp_options()
+                                  function must be called prior to creating the video.
         @param coastlines: (bool) Show coastlines on images used for the video. Coastline options
                                   can be changed from their default values via the accessor
-                                  GoesVideo.GoesCompositor.set_coastlines_options()
+                                  GoesAnimator.GoesCompositor.set_coastlines_options() NOTE: pycoast
+                                  package may need to be installed in order for this to work
         @param cmap: (str) Matplotlib colormap name or path to a json file containing a colormap
                            produced using the online app at https://sciviscolor.org/color-moves-app/
         @param text: (dict) add custom text to each frame of the video. Dictionary should be

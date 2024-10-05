@@ -8,22 +8,24 @@ version = "2024.1.0"
 authors = [{name="Justin Holland"}]
 description = """Package to streamline operations with GOES satellite imagery"""
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
-    "boto3",
-    "botocore",
-    "colorama",
-    "matplotlib",
-    "moviepy",
-    "numpy",
-    "opencv-python",
+    "boto3>=1.34.140",
+    "botocore>=1.34.140",
+    "colorama>=0.4.6",
+    "matplotlib>=3.8.4",
+    "moviepy>=1.0.3",
+    "netCDF4>=1.6.2",
+    "numpy>=1.26.4;python_version>'3.9'",
+    "opencv-python>=4.7.0.72",
     "Pillow>=10.1.0",
-    "pytz",
-    "PyYAML",
-    "rasterio",
-    "satpy>=0.45.0",
-    "tqdm",
-    "urllib3"
+    "pyspectral>=0.12.5",
+    "pytz>=2024.1",
+    "PyYAML>=6.0.1",
+    "rasterio>=1.3.10",
+    "satpy>=0.49.0",
+    "tqdm>=4.66.4",
+    "urllib3>=2.0.2;python_version>'3.9'"    
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
