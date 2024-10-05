@@ -131,7 +131,7 @@ class GoesBase:
                     ch = _s[-3:]
         else:
             raise exceptions.InvalidArgumentError(
-                "AWS filename does not correspond to the ABI-L2-CMI product."
+                "AWS filename does not correspond to the ABI-L2-CMI product. "
             )
 
         return ch
