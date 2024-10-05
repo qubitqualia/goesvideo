@@ -1,0 +1,4 @@
+* If you have problems creating any of the scenes listed in abi.yaml included in the Satpy package, it is 
+  a good idea to run the check_satpy() function included with Satpy. This will tell you if there are any issues 
+  or missing dependencies that may be needed
+* To create composites with a night background you need to make sure you have installed rioxarray
