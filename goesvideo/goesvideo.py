@@ -1784,7 +1784,7 @@ class GoesAnimator(GoesBase):
 
         for k, folder in enumerate(img_folders):
             img_filenames = list(folder.glob("*.png"))
-
+            img_filenames = sorted(img_filenames, key=lambda item: item.name)
             timestamps_file = list(folder.glob("*.csv"))[0]
             tstamps, data_filenames = self._get_timestamps(timestamps_file)
 
