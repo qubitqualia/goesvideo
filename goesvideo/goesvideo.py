@@ -1219,7 +1219,8 @@ class GoesCompositor(GoesBase):
                                 (100, (0.988, 0.239, 0.239, 0.6)),
                                 (200, (1.0, 0.0, 0.0, 0.6)),
                             )
-                            img.apply_pil(convert, output_mode="LA", fun_args="LA")
+                            #img.apply_pil(convert, output_mode="LA", fun_args="LA")
+                            img.convert("LA")
                             img.colorize(cmap)
                             img.rio_save(str(folder_path / svname))
                         else:
