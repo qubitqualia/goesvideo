@@ -8,7 +8,9 @@ from pathlib import Path
 import tempfile
 
 from PIL import Image
+import cv2
 from colorama import Fore
+from moviepy.editor import ImageSequenceClip
 import numpy as np
 import pytz
 from tqdm import tqdm
@@ -130,8 +132,8 @@ class Overlay:
 
         print()
         print(f"{Fore.GREEN} Initialization Complete!")
-        print()
-
+        print()                
+    
     def create_overlays(
         self,
         outpath,
@@ -467,7 +469,9 @@ class Overlay:
 
         if baseimgpath.is_dir():
             gtiffs = list(baseimgpath.glob("*.tif")) + list(baseimgpath.glob("*.tiff"))
+            gtiffs = sorted(gtiffs, key=lambda item: item.name)
             pngs = list(baseimgpath.glob("*.png"))
+            pngs = sorted(pngs, key=lambda item: item.name)
         else:
             if baseimgpath.suffix == ".tif" or baseimgpath.suffix == ".tiff":
                 gtiffs = [baseimgpath]
@@ -582,6 +586,7 @@ class Overlay:
         for i, p in enumerate(overlaypaths):
             p = Path(p)
             gtiffs = list(p.glob("*.tif")) + list(p.glob("*.tiff"))
+            gtiffs = sorted(gtiffs, key=lambda item: item.name)
             if not gtiffs:
                 print(
                     f"{Fore.RED} ERROR: No geotiffs found in overlay path {str(p)}. Exiting..."
@@ -920,3 +925,53 @@ class Overlay:
                 c += 1
 
         return left_sep, right_sep
+
+def create_video(vidsavepath,
+                 finaloverlaypath,                 
+                 fps=20,
+                 codec='rawvideo',
+                 **kwargs):
+    img_filenames = list(Path(finaloverlaypath).glob("*.png"))
+    img_filenames = sorted(img_filenames, key=lambda item: item.name)
+
+    tmpdir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+    tmppath = Path(tmpdir.name)
+    newfiles = []
+
+    if kwargs:
+        timestamps = kwargs.get("timestamps", None)
+        if timestamps:
+            for f in img_filenames:
+                fnew = str(tmppath / (f.stem + '.png'))
+                newfiles.append(fnew)
+                fmod = f.stem.replace('_', ':')
+                flist = fmod.split(' ')
+                timestamps["label"] = (' ').join(flist[0:2])
+                kwargs["timestamps"] = timestamps
+                img = Image.open(str(f))
+                img = editortools.modify_image(img, **kwargs)
+                if codec == "rawvideo" or codec == "png":
+                    img = Image.fromarray(
+                        cv2.cvtColor(np.asarray(img, dtype=np.uint8), cv2.COLOR_RGB2BGR)
+                    )
+                img.save(fnew)
+                img.close()
+        else:
+            for f in img_filenames:
+                fnew = str(tmppath / (f.stem + '.png'))
+                newfiles.append(fnew)
+                img = Image.open(str(f))
+                img = editortools.modify_image(img, **kwargs)
+                if codec == "rawvideo" or codec == "png":
+                    img = Image.fromarray(
+                        cv2.cvtColor(np.asarray(img, dtype=np.uint8), cv2.COLOR_RGB2BGR)
+                    )
+                img.save(fnew)
+                img.close()
+
+    imgarr = [str(f) for f in newfiles]
+    clip = ImageSequenceClip(imgarr, fps=fps)
+    clip.write_videofile(vidsavepath, codec=codec)
+    shutil.rmtree(str(tmppath))
+
+    return

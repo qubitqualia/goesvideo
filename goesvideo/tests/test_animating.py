@@ -8,46 +8,31 @@ import shutil
 import pytest
 
 from goesvideo import GoesAnimator
+from goesvideo.tests import treegenerator
 
 
 def test_animating():
-    # Create temp folder
-    tmpfolder = tempfile.TemporaryDirectory()
-    tmppath = Path(tmpfolder.name)
-    imgpath = tmppath / "Images"
-    imgsubpath = imgpath / "subfolder"
-    imgpath.mkdir(exist_ok=True)
-    imgsubpath.mkdir(exist_ok=True)
-    vidsubpath = tmppath / "Videos" / "subfolder"
-
-    # Copy test images to tmpfolder
-    imgpath = importfiles("goesvideo") / "tests" / "Test Images"
-
-    files = imgpath.glob("*.png")
-    for f in files:
-        shutil.copy(str(f), str(imgsubpath / (f.stem + f.suffix)))
-    shutil.copy(str(imgpath / "metadata.json"), str(imgsubpath / "metadata.json"))
-    shutil.copy(str(imgpath / "timestamps.csv"), str(imgsubpath / "timestamps.csv"))
+    # Create base dir tree
+    tmppath = tempfile.TemporaryDirectory()
+    base_dir = Path(tmppath.name)
+    treegenerator.generate_tree(base_dir, "C02", copy_images=True)
 
     # Create videos
     exists = []
-    ga = GoesAnimator("goes-east", "full", "ABI-L2-CMIP", base_dir=str(tmppath))
-    ga.create_video("C01", from_existing_imgs=True, fps=1, force=True)
-    exists.append((vidsubpath / "video.mp4").exists())
-    os.remove(str(vidsubpath / "video.mp4"))
+    ga = GoesAnimator("goes-east", "conus", "ABI-L2-CMIP", base_dir=str(base_dir))
+    ga.create_video("C02", from_existing_imgs=True, fps=1, force=True)
+    exists.append((base_dir / "Videos" / "C02").exists())
 
-    ga = GoesAnimator("goes-east", "full", "ABI-L2-CMIP", base_dir=str(tmppath))
-    ga.create_video("C01", from_existing_imgs=True, fps=1, cmap="Spectral", force=True)
-    exists.append((vidsubpath / "video.mp4").exists())
-    os.remove(str(vidsubpath / "video.mp4"))
+    ga = GoesAnimator("goes-east", "conus", "ABI-L2-CMIP", base_dir=str(base_dir))
+    ga.create_video("C02", from_existing_imgs=True, fps=1, cmap="Spectral", force=True)
+    exists.append((base_dir / "Videos" / "C02").exists())
 
-    ga = GoesAnimator("goes-east", "full", "ABI-L2-CMIP", base_dir=str(tmppath))
-    ga.create_video("C01", from_existing_imgs=True, fps=1, force=True)
-    exists.append((vidsubpath / "video.mp4").exists())
-    os.remove(str(vidsubpath / "video.mp4"))
+    ga = GoesAnimator("goes-east", "conus", "ABI-L2-CMIP", base_dir=str(base_dir))
+    ga.create_video("C02", from_existing_imgs=True, fps=1, force=True)
+    exists.append((base_dir / "Videos" / "C02").exists())
 
     assert all(exists)
-    tmpfolder.cleanup()
+
 
     return
 

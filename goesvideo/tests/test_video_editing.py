@@ -19,11 +19,11 @@ def test_video_edit():
     )
 
     fontpath = str(
-        importfiles("goesvideo") / "tests" / "Fonts" / "StoryElementRegular-X3RWa.ttf"
+        importfiles("goesvideo") / "tests" / "Fonts" / "Roboto-Regular.ttf"
     )
 
     # Test video annotation
-    kwargs = {
+    txt = {
         "label": "this is a test label",
         "position": (75, 75),
         "fontpath": fontpath,
@@ -31,12 +31,14 @@ def test_video_edit():
         "fontsize": 5,
         "opacity": 0.7,
     }
+    kwargs = {}
+    kwargs['text'] = txt
     newclip = clip.annotate(0, 1, freeze=True, **kwargs)
 
     assert isinstance(newclip, VideoClip)
 
     # Test preview
-    img = clip.preview(tmark=2, **kwargs)
+    img = clip.preview(tmark=2, display=False, **kwargs)
 
     assert isinstance(img, Image.Image)
     if show_image:

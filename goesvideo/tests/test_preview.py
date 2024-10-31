@@ -1,3 +1,4 @@
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -6,8 +7,10 @@ from importlib.resources import files as importfiles
 from PIL import Image
 import pytest
 import pytz
+import shutil
 
 from goesvideo import GoesAnimator
+from goesvideo.tests import treegenerator
 
 
 def test_preview():
@@ -15,34 +18,36 @@ def test_preview():
     # Toggle display of image
     show_image = True
 
+    # Generate expected folder tree
     tmpfolder = tempfile.TemporaryDirectory()
-    tmppath = Path(tmpfolder.name)
+    base_dir = Path(tmpfolder.name)
+    treegenerator.generate_tree(base_dir, 'BigHorn', copy_ncfiles=True)
 
-    ga = GoesAnimator("goes-east", "full", "ABI-L2-CMIP", base_dir=str(tmppath))
+    ga = GoesAnimator("goes-east", "full", "ABI-L2-CMIP", base_dir=base_dir)
 
     imgpath = importfiles("goesvideo") / "tests" / "Test Images"
     imgfiles = list(imgpath.glob("*.png"))
 
     fontpath = str(
-        importfiles("goesvideo") / "tests" / "Fonts" / "StoryElementRegular-X3RWa.ttf"
+        importfiles("goesvideo") / "tests" / "Fonts" / "Roboto-Regular.ttf"
     )
 
     timestamps = {
-        "label": "2023-01-01 00:00:00 UTC",
-        "position": "upper-right",
+        "label": "2023-01-01 00:00:00",
+        "position": "upper-left",
         "fontpath": fontpath,
         "fontcolor": (255, 0, 0),
         "tzinfo": (pytz.utc, "UTC"),
-        "fontsize": 5,
+        "fontsize": 20,
         "opacity": 0.7,
     }
 
     text = {
         "label": "this is a test label",
-        "position": (75, 75),
+        "position": (600, 600),
         "fontpath": fontpath,
         "fontcolor": (255, 0, 0),
-        "fontsize": 5,
+        "fontsize": 20,
         "opacity": 0.7,
     }
 
@@ -52,15 +57,15 @@ def test_preview():
             "padding": (10, 10),
             "fontpath": fontpath,
             "fontcolor": (255, 0, 0),
-            "fontsize": 5,
+            "fontsize": 20,
             "opacity": 0.7,
         },
         "tiplength": 0.1,
         "width": 2,
         "color": (255, 0, 0),
         "opacity": 0.7,
-        "start_position": (45, 45),
-        "end_position": (65, 65),
+        "start_position": (200, 200),
+        "end_position": (400, 400),
     }
 
     circle = {
@@ -69,14 +74,14 @@ def test_preview():
             "padding": (10, 10),
             "fontpath": fontpath,
             "fontcolor": (255, 0, 0),
-            "fontsize": 5,
-            "opacity": 0.7,
+            "fontsize": 20,
+            "opacity": 0.3,
         },
         "fill": (255, 0, 0),
         "outline": (0, 0, 0),
         "width": 1,
         "radius": 5,
-        "centerpos": (100, 100),
+        "centerpos": (500, 500),
     }
 
     kwargs = {}
@@ -85,12 +90,24 @@ def test_preview():
     kwargs["arrow"] = arrow
     kwargs["circle"] = circle
 
-    img = ga.preview(use_image_file=imgfiles[0], **kwargs, display=False)
+    testimg = Image.open(imgfiles[0])
+    testimg = testimg.resize((1024, 768))
+    tmpimgfile = tempfile.NamedTemporaryFile("w+b", suffix='.png', delete=False, delete_on_close=False)
+    testimg.save(tmpimgfile.name)
+    testimg.close()
+    img = ga.preview(use_image_file=tmpimgfile.name, **kwargs, res=(1024, 768), display=False)
+    os.unlink(tmpimgfile.name)
 
     assert isinstance(img, Image.Image)
 
     if show_image:
         img.show()
+
+    # Cleanup
+    try:
+        shutil.rmtree(base_dir)
+    except FileNotFoundError:
+        pass
 
     return
 

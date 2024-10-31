@@ -11,7 +11,7 @@ from PIL import Image
 from goesvideo.addons.overlays import Overlay
 
 
-def test_overlays():
+def test_generic_overlays():
 
     # Toggle display of output images
     # Note that this will open a large number of

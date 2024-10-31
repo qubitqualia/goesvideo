@@ -1,16 +1,39 @@
 {
-    "Scene": "C01",
+    "Scene": "C02",
     "Satellite": "goes-east",
-    "Product": "ABI-L2-CMIPF",
-    "Region": "full",
-    "Start_Time": "2023-10-22 14:00:00",
-    "End_Time": "2023-10-22 15:00:00",
+    "Product": "ABI-L2-CMIPC",
+    "Region": "conus",
+    "Start_Time": "2024-10-08 17:53:00",
+    "End_Time": "2024-10-08 19:03:00",
+    "Resolution": 500,
     "Keep_Names": false,
     "Interval": 1,
     "Crop_Box": [
-        -97,
-        21,
-        -78,
-        40
-    ]
+        -108.09,
+        43.794,
+        -106.43,
+        45.25
+    ],
+    "geodata": {
+        "driver": "GTiff",
+        "dtype": "uint8",
+        "nodata": 0.0,
+        "width": 322,
+        "height": 207,
+        "count": 3,
+        "blockxsize": 256,
+        "blockysize": 256,
+        "tiled": true,
+        "compress": "deflate",
+        "interleave": "pixel",
+        "transform": [
+            500.9949314789514,
+            0.0,
+            -2333669.3573019085,
+            0.0,
+            -500.3951150012171,
+            4189002.077913514
+        ],
+        "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"Unknown based on GRS 1980 ellipsoid\",SPHEROID[\"GRS 1980\",6378137,298.257222101,AUTHORITY[\"EPSG\",\"7019\"]]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433]],PROJECTION[\"Geostationary_Satellite\"],PARAMETER[\"central_meridian\",-75],PARAMETER[\"satellite_height\",35786023],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],EXTENSION[\"PROJ4\",\"+proj=geos +sweep=x +lon_0=-75 +h=35786023 +x_0=0 +y_0=0 +ellps=GRS80 +units=m +no_defs\"]]"
+    }
 }

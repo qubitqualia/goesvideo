@@ -23,17 +23,19 @@ from botocore.config import Config
 import satpy
 import satpy.utils
 import numpy as np
-import cv2
-import matplotlib.pyplot as plt
 from PIL import Image
 from moviepy.editor import ImageSequenceClip
 from matplotlib import colormaps
+from pyresample.geometry import AreaDefinition
+import rasterio.crs
 from colorama import Fore
 from tqdm import tqdm
 from satpy.writers import to_image
 import trollimage.colormap as cm
 
-import goesvideo.utils.editortools as utils
+#import goesvideo.utils.editortools as utils
+from goesvideo.utils import editortools as utils
+from goesvideo.utils import gistools
 import goesvideo.exceptions as exceptions
 
 
@@ -78,17 +80,17 @@ class GoesBase:
         if product[-1] == "F" or product[-1] == "C":
             if "FDC" not in product:
                 self.product = product
-                print(
-                    f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' or "
-                    f"'C' indicating region."
-                )
+                #print(
+                #    f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' or "
+                #    f"'C' indicating region."
+                #)
             else:
                 if "FDCC" in product or "FDCF" in product:
                     self.product = product
-                    print(
-                        f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' "
-                        f"or 'C' indicating region."
-                    )
+                    #print(
+                    #    f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' "
+                    #    f"or 'C' indicating region."
+                    #)
                 else:
                     if self.region == "conus":
                         self.product = product + "C"
@@ -595,7 +597,7 @@ class GoesDownloader(GoesBase):
             else:
                 year = (tfile + timedelta(days=1)).timetuple().tm_year
                 day = (tfile + timedelta(days=1)).timetuple().tm_yday
-
+    
         print(f"{Fore.GREEN}Done!")
         self._init_verbosity_on = False
 
@@ -780,27 +782,58 @@ class GoesDownloader(GoesBase):
         end_times = []
 
         for ch in self.remote_scene_files:
-            start_times.append(
-                self._get_timestamp_from_filename(
-                    self.remote_scene_files[ch]["filenames"][0]
+            try:
+                start_times.append(
+                    self._get_timestamp_from_filename(
+                        self.remote_scene_files[ch]["filenames"][0]
+                    )
                 )
-            )
-            end_times.append(
-                self._get_timestamp_from_filename(
-                    self.remote_scene_files[ch]["filenames"][-1]
+                end_times.append(
+                    self._get_timestamp_from_filename(
+                        self.remote_scene_files[ch]["filenames"][-1]
+                    )
                 )
-            )
-
+            except IndexError:
+                self._handle_index_error()
+        
+        start_ch = []
+        end_ch = []
         for i, key in enumerate(self.remote_scene_files):
             _start = start_times[i]
             _end = end_times[i]
             self.remote_scene_files[key]["start_time"] = _start
             self.remote_scene_files[key]["end_time"] = _end
+            
+            if abs((_start - start_time).total_seconds()) / 60 > 30:
+                start_ch.append(key)
+            if abs((_end - end_time).total_seconds()) / 60 > 30:
+                end_ch.append(key)
+            
+        if start_ch:
+            keystr = (',').join(start_ch)
+            keystr = keystr.rstrip(',')
+            print(f"{Fore.RED} WARNING - Available start time for channel(s) {keystr} is more than 30 minutes outside ")
+            print(f"{Fore.RED}           the requested time of {datetime.isoformat(start_time)}. ")
+            print()
+            print(f"{Fore.RED} Using new start time of {datetime.isoformat(_start)}")
+        if end_ch:
+            keystr = (',').join(end_ch)
+            keystr = keystr.rstrip(',')
+            print(f"{Fore.RED} WARNING - Available end time for channel(s) {keystr} is more than 30 minutes outside ")
+            print(f"{Fore.RED}           the requested time of {datetime.isoformat(end_time)}. ")
+            print()
+            print(f"{Fore.RED} Using new end time of {datetime.isoformat(_end)}")
 
         self._scene_dict_ready = True
         return
 
-
+    def _handle_index_error(self):
+        for ch in self.remote_scene_files:
+            print(f"{Fore.RED} ERROR - No data available in requested time period for channel {ch}")
+        
+        print(f"{Fore.GREEN} Exiting.")
+        sys.exit(1)
+        
 class GoesCompositor(GoesBase):
     def __init__(self, sat, region, product, base_dir=None):
         super().__init__(sat, region, product)
@@ -817,7 +850,7 @@ class GoesCompositor(GoesBase):
             self.downloader = GoesDownloader(sat, region, product)
         else:
             self.base_dir = Path(base_dir)
-            self.imgsvpath = self.base_dir / "Images"
+            self.imgsvpath = self.base_dir / "Scenes"
             self.datapath = self.base_dir / "goesdata"
             self.downloader = GoesDownloader(
                 sat, region, product, base_dir=self.base_dir
@@ -831,6 +864,8 @@ class GoesCompositor(GoesBase):
         self.satpy_cache = False
         self.satpy_cache_dir = None
         self.last_img_folder = None
+        self.default_resample_res = 500     #this is the most resolution available from GOES; if desired can change 
+                                            #to 1000 or 2000 if working with channels with lower resolution 
 
     def create_composites(
         self,
@@ -855,7 +890,7 @@ class GoesCompositor(GoesBase):
         @param start_time: (str) isoformat datetime string (utc time)
         @param end_time: (str) isoformat datetime string (utc time)
         @param bbox: (tup) latitude-longitude coordinates for cropping the output scene given as
-                           (xmin, ymax, xmax, ymin)
+                           (west, south, east, north)
         @param interval: (int) desired interval in minutes between composite images
         @param output_format: (str) file format for output images (e.g. 'simple_image', 'geotiff')
         @param keep_filenames: (bool) If true, output images will be saved using the original nc
@@ -966,7 +1001,7 @@ class GoesCompositor(GoesBase):
                 print()
                 ask = input(
                     f"{Fore.RED} WARNING - Image subfolder provided by the 'folder_name' argument "
-                    f"already exists. Existing images will be overwritten! Continue anyway? (Y/N): "
+                    f"already exists. \n Existing images will be overwritten! Continue anyway? (Y/N): "
                 )
             else:
                 ask = "Y"
@@ -1023,7 +1058,7 @@ class GoesCompositor(GoesBase):
         if folder_name:
             folder_path = Path(self.imgsvpath / folder_name)
         else:
-            folder = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+            folder = tempfile.TemporaryDirectory()
             folder_path = Path(folder.name)
 
         # Write metadata.json
@@ -1035,6 +1070,7 @@ class GoesCompositor(GoesBase):
                 "Region": self.region,
                 "Start_Time": start_time,
                 "End_Time": end_time,
+                "Resolution": self.default_resample_res,
                 "Keep_Names": keep_filenames,
                 "Interval": interval,
             }
@@ -1054,7 +1090,9 @@ class GoesCompositor(GoesBase):
         # Main loop for generating composite images
         print()
         print(f"{Fore.GREEN}Preparing scene...")
+        time.sleep(0.5)
 
+        counter = 0
         for i in tqdm(range(tsteps), colour="green"):
             kwargs = {}
             skip = False
@@ -1122,18 +1160,50 @@ class GoesCompositor(GoesBase):
                     # fails for some scenes however, so if it does we'll fall back to the lowest
                     # area in the scene. Otherwise, use the area and resampler provided by the user
                     if not resample:
-                        try:
-                            new_scene = scene.resample(
-                                scene.finest_area(),
-                                resampler="native",
-                                **resampler_kwargs,
-                            )
-                        except ValueError:
-                            new_scene = scene.resample(
-                                scene[minkey].attrs["area"],
-                                resampler="nearest",
-                                **resampler_kwargs,
-                            )
+                        if bbox:
+                            if self.satellite == 'goes-east':
+                                proj4_goes = ("+proj=geos +lon_0=-75 +h=35786023 +x_0=0 +y_0=0 +ellps=GRS80 +units=m "
+                                             "+no_defs +sweep=x +type=crs")
+                                _lon = '-75'
+                            elif self.satellite == 'goes-west':
+                                proj4_goes = ("+proj=geos +lon_0=-137 +h=35786023 +x_0=0 +y_0=0 +ellps=GRS80 +units=m "
+                                             "+no_defs +sweep=x +type=crs")
+                                _lon = '-137'
+                            bbox_proj_coords = gistools.transform_bbox(bbox, rasterio.crs.CRS.from_epsg(4326),
+                                                                       rasterio.crs.CRS.from_proj4(proj4_goes))
+                            width = int(abs((bbox_proj_coords[0] - bbox_proj_coords[2])) / self.default_resample_res)
+                            height = int(abs((bbox_proj_coords[1] - bbox_proj_coords[3])) / self.default_resample_res)
+                            
+                            custom_area = AreaDefinition('goes_custom',
+                                                      'bbox-bounded goes area',
+                                                         'proj_id_1',
+                                                      {'ellps': 'GRS80',
+                                                                'h': '35786023',
+                                                                'lon_0': _lon,
+                                                                'no_defs': 'None',
+                                                                'proj': 'geos',
+                                                                'sweep': 'x',
+                                                                'type': 'crs',
+                                                                'units': 'm',
+                                                                'x_0': '0',
+                                                                'y_0': '0'},
+                                                                width,
+                                                                height,
+                                                                bbox_proj_coords)
+                            new_scene = scene.resample(custom_area)
+                        else:                        
+                            try:
+                                new_scene = scene.resample(
+                                    scene.finest_area(),
+                                    resampler="native",
+                                    **resampler_kwargs,
+                                )
+                            except ValueError:
+                                new_scene = scene.resample(
+                                    scene[minkey].attrs["area"],
+                                    resampler="nearest",
+                                    **resampler_kwargs,
+                                )
                     else:
                         area = resample[0]
                         resampler = resample[1]
@@ -1164,8 +1234,9 @@ class GoesCompositor(GoesBase):
                             )
 
                     # Crop scene to bbox if provided
-                    if bbox:
-                        new_scene = new_scene.crop(ll_bbox=bbox)
+                    #if bbox:
+                    #    new_scene_crop = new_scene.crop(ll_bbox=bbox)
+                    #    new_scene = new_scene_crop.resample(resampler='native')
 
                     # If keep_filenames, the original template found in the nc data file will be
                     # used for saving the images. Otherwise, an isoformat time string will be used
@@ -1199,6 +1270,35 @@ class GoesCompositor(GoesBase):
                     # function. It will be necessary to then save the files in a permanent folder
                     # and delete the temporary directory by calling its cleanup() function
                     if output_format == "simple_image":
+                        # Write geotiff data to metadata.json for future use
+                        if counter == 0:
+                            tmpfile = tempfile.NamedTemporaryFile("w+b", suffix='.tif', delete=False,
+                                                                  delete_on_close=False)
+                            _tifout = tmpfile.name
+                            new_scene.save_dataset(
+                                scenename,
+                                writer="geotiff",
+                                filename=_tifout,
+                                fill_value=False,
+                                **kwargs
+                            )
+                            with rasterio.open(_tifout, 'r') as src:
+                                profile = src.profile
+
+                            with open(str(folder_path / "metadata.json"), "r+") as f:
+                                _dict = json.load(f)                                
+                                _dict['geodata'] = profile.data
+                                crs_str = _dict['geodata']['crs'].wkt
+                                _dict['geodata'].pop('crs', None)
+                                _t = _dict['geodata'].pop('transform', None)
+                                _dict['geodata']['transform'] = [_t.a, _t.b, _t.c, _t.d, _t.e, _t.f]
+                                _dict['geodata']['crs'] = crs_str
+                                f.seek(0)
+                                json.dump(_dict, f, indent=4)
+                            
+                            os.unlink(_tifout)
+                        
+                        counter += 1
                         svname += ".png"
                         new_scene.save_dataset(
                             scenename,
@@ -1207,7 +1307,8 @@ class GoesCompositor(GoesBase):
                             fill_value=False,
                             **kwargs,
                         )
-                    elif output_format == "geotiff":
+                    elif output_format == "geotiff":                        
+                            
                         svname += ".tif"
                         # These settings are specific to the ABI-L2-FDC product
                         if scenename == "Power" or scenename == "Temp":
@@ -1219,8 +1320,8 @@ class GoesCompositor(GoesBase):
                                 (100, (0.988, 0.239, 0.239, 0.6)),
                                 (200, (1.0, 0.0, 0.0, 0.6)),
                             )
-                            #img.apply_pil(convert, output_mode="LA", fun_args="LA")
                             img.convert("LA")
+                            #img.apply_pil(convert, output_mode="LA", fun_args="LA")
                             img.colorize(cmap)
                             img.rio_save(str(folder_path / svname))
                         else:
@@ -1231,6 +1332,23 @@ class GoesCompositor(GoesBase):
                                 keep_palette=True,
                                 **kwargs,
                             )
+                        
+                        if counter == 0:
+                            with rasterio.open(str(folder_path / svname)) as src:
+                                profile = src.profile
+                            
+                            with open(str(folder_path / "metadata.json"), "r+") as f:
+                                _dict = json.load(f)
+                                _dict['geodata'] = profile.data
+                                crs_str = _dict['geodata']['crs'].wkt
+                                _dict['geodata'].pop('crs', None)
+                                _t = _dict['geodata'].pop('transform', None)
+                                _dict['geodata']['transform'] = [_t.a, _t.b, _t.c, _t.d, _t.e, _t.f]
+                                _dict['geodata']['crs'] = crs_str
+                                f.seek(0)
+                                json.dump(_dict, f, indent=4)
+                        
+                        counter += 1
 
                     with open(str(folder_path / "timestamps.csv"), "a") as f:
                         tstr = self._get_timestamp_from_filename(
@@ -1290,15 +1408,15 @@ class GoesAnimator(GoesBase):
             self.vidsvpath = self.base_dir / "GoesVideo - Videos"
             self.datapath = self.base_dir / "GoesVideo - Data"
             self.tmpdir = self.base_dir / "GoesVideo - temp"
-            self.tmpimgpath = self.tmpdir / "Images"
+            self.tmpimgpath = self.tmpdir / "Scenes"
             self.compositor = GoesCompositor(sat, region, product)
         else:
             self.base_dir = Path(base_dir)
-            self.imgsvpath = self.base_dir / "Images"
+            self.imgsvpath = self.base_dir / "Scenes"
             self.vidsvpath = self.base_dir / "Videos"
             self.datapath = self.base_dir / "goesdata"
             self.tmpdir = self.base_dir / "temp"
-            self.tmpimgpath = self.tmpdir / "Images"
+            self.tmpimgpath = self.tmpdir / "Scenes"
             self.compositor = GoesCompositor(
                 sat, region, product, base_dir=self.base_dir
             )
@@ -1447,7 +1565,8 @@ class GoesAnimator(GoesBase):
                         for file in tmpdirpath.iterdir():
                             if file.is_file():
                                 shutil.copyfile(str(file), self.tmpimgpath / file.name)
-                        tmpdir.cleanup()
+                                os.unlink(str(file))
+                        os.rmdir(tmpdirpath)
                         imgname = list(self.tmpimgpath.glob("*.png"))[0]
 
                         img = Image.open(imgname)
@@ -1500,8 +1619,9 @@ class GoesAnimator(GoesBase):
         img_kwargs = {}
 
         if timestamps:
-            img_kwargs["label"] = timestamps.pop("label")
-            img_kwargs["tdict"] = timestamps
+            img_kwargs["timestamps"] = {}
+            img_kwargs["timestamps"]["label"] = timestamps.pop("label")
+            img_kwargs["timestamps"]["tdict"] = timestamps
 
         if res == "auto":
             res = self._get_optimal_resolution(img)
@@ -1516,8 +1636,7 @@ class GoesAnimator(GoesBase):
         img = utils.modify_image(img, **img_kwargs)
 
         if display:
-            plt.imshow(img)
-            plt.show()
+            img.show()
 
         return img
 
@@ -1568,7 +1687,7 @@ class GoesAnimator(GoesBase):
                                           'available' for the scenename parameter.
         @param interval: (int) time interval between GOES images in video in minutes
         @param bbox: (tup) tuple of floats specifying crop region in latitude-longitude coordinates
-                           (xmin, ymax, xmax, ymin)
+                           (west, south, east, north)
         @param timestamps: (bool) Add timestamp to each video frame. The set_timestamp_options()
                                   function must be called prior to creating the video.
         @param coastlines: (bool) Show coastlines on images used for the video. Coastline options
@@ -1823,9 +1942,7 @@ class GoesAnimator(GoesBase):
                     img = utils.add_text(img, **text)
 
                 if codec == "rawvideo" or codec == "png":
-                    img = Image.fromarray(
-                        cv2.cvtColor(np.asarray(img, dtype=np.uint8), cv2.COLOR_RGB2BGR)
-                    )
+                    img = editortools.convert_color(img)
 
                 imgname = tmpfolderpath / ("image_" + str(i) + ".png")
                 img.save(imgname)
