@@ -18,7 +18,7 @@ from colorama import Fore
 from goesvideo.utils import gistools
 
 
-# Functions for image modifications
+#------ Image Annotations
 def build_cmap(fname):
     """
     Builds a matplotlib cmap for a colormap specification generated using the app available at
@@ -516,7 +516,7 @@ def modify_image(img, **kwargs):
         img = img.resize((res[0], res[1]))
 
     if triangle:        
-            
+        xy = triangle.pop("coords", None)
         fill = triangle.pop("fill", None)
         outline = triangle.pop("outline", None)
         width = triangle.pop("width", 1)
@@ -527,85 +527,7 @@ def modify_image(img, **kwargs):
     return img
 
 
-def annotate_video(
-    filepath, svname=None, t_edit_start=None, t_edit_end=None, freeze=False, **kwargs
-):
-    """
-    Add annotations to an existing animation. Modified video will be saved to the same
-    path.
-    @param filepath: (str) path to video file
-    @param svname: (str) name of output video; if None then name will be the same
-                         as the input file suffixed by '_annotated'
-    @param t_edit_start: (float) start time for edit in seconds
-    @param t_edit_end: (float) end time for edit in seconds
-    @param freeze: If true, the video will pause while annotations are displayed
-    @param kwargs: annotation-related kwargs
-    @return: None
-    """
-    basepath = "\\".join(filepath.split("\\")[0:-1]) + "\\"
-    # Try to get codec from savename or if not provided use avi
-    if not svname:
-        svname = basepath + "_annotated.avi"
-        codec = "rawvideo"
-    else:
-        svname = basepath + svname
-        if svname.split(".")[1] == "avi":
-            codec = "rawvideo"
-        elif svname.split(".")[1] == "mp4":
-            codec = "mpeg4"
-        elif svname.split(".")[1] == "wmv":
-            codec = "libvpx"
-        else:
-            codec = "mpeg4"
-            print()
-            print(
-                f"{Fore.RED} WARNING - Unrecognized file extension. Trying mpeg4 codec."
-            )
-
-    clip = VideoFileClip(filepath)
-
-    if not t_edit_start:
-        t_edit_start = 0
-    if not t_edit_end:
-        t_edit_end = clip.duration
-
-    imgrepl = []
-    imgbuffer_1 = []
-    imgbuffer_2 = []
-    _enter = False
-    _exit = False
-    for t, frame in clip.iter_frames(with_times=True, logger="bar", dtype="uint8"):
-        img = Image.fromarray(frame)
-        if t_edit_start <= t <= t_edit_end:
-            if freeze:
-                if not _enter:
-                    editimg = modify_image(img, **kwargs)
-                    imgrepl.append(np.array(editimg))
-                    _enter = True
-                    imgbuffer_2.append(np.array(img))
-                else:
-                    imgrepl.append(np.array(editimg))
-                    imgbuffer_2.append(np.array(img))
-            else:
-                editimg = modify_image(img, **kwargs)
-                imgbuffer_1.append(np.array(editimg))
-
-        elif t < t_edit_start:
-            imgbuffer_1.append(np.array(img))
-        else:
-            imgbuffer_2.append(np.array(img))
-
-    imgarr = imgbuffer_1 + imgrepl + imgbuffer_2
-    if codec == "avi":
-        imgarr = [convert_color(frame) for frame in imgarr]
-
-    outclip = ImageSequenceClip(imgarr, fps=clip.fps)
-    outclip.write_videofile(svname, codec=codec)
-
-    return
-
-
-# Class for video editing
+#------ Video annotations
 class GoesClip(VideoFileClip):
     def __init__(self, filepath):
         super().__init__(filepath)
@@ -730,29 +652,4 @@ class GoesClip(VideoFileClip):
 
         return retclip
     
-    def convert_crs(self, dst_crs, src_satellite, src_bbox_latlon, codec='rawvideo'):
-        if src_satellite == 'goes-east':
-            srccrs = ("+proj=geos +lon_0=-75 +h=35786023 +x_0=0 +y_0=0 +ellps=GRS80 +units=m "
-                      "+no_defs +sweep=x +type=crs")
-        elif src_satellite == 'goes-west':
-            srccrs = ("+proj=geos +lon_0=-137 +h=35786023 +x_0=0 +y_0=0 +ellps=GRS80 +units=m "
-                      "+no_defs +sweep=x +type=crs")
-        else:
-            print(f'{Fore.RED} ERROR - \'src_satellite\' parameter in call to \'convert_crs\' must be either \"goes-east\"'
-                  f'                    or \"goes-west\".')
-            print(f'{Fore.GREEN} Exiting...')
-            sys.exit(1)
-
-        print(f'{Fore.GREEN} Reprojecting video frames...')
-        clip = self.fl(lambda get_frame, t:
-                       np.array(gistools.reproject_png(Image.fromarray(get_frame(t)), src_bbox_latlon,
-                                                       srccrs, dst_crs))
-                       )
-
-        if codec == 'rawvideo':
-            retclip = clip.fl(lambda get_frame, t: np.array(editortools.convert_color(img)))
-        else:
-            retclip = clip
-
-        return retclip
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "goesvideo"
-version = "2024.10.6"
+version = "2024.11.1"
 authors = [{name="Justin Holland"}]
 description = """Package to streamline operations with GOES satellite imagery"""
 readme = "README.md"
@@ -17,7 +17,6 @@ dependencies = [
     "moviepy>=1.0.3",
     "netCDF4>=1.6.2",
     "numpy>=1.26.4;python_version>'3.9'",
-    "opencv-python>=4.7.0.72",
     "Pillow>=10.1.0",
     "pyspectral>=0.12.5",
     "pytz>=2024.1",

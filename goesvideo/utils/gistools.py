@@ -846,7 +846,7 @@ def get_timestamp(file, tformatdict, tz=pytz.utc):
 
     if not year or not month or not day:
         print(
-            f"{Fore.RED} ERROR: Could not extract time from provided filename {file}. Check time "
+            f"{Fore.RED}WARNING - Could not extract time from provided filename {file}. Check time "
             f"format string."
         )
         t = None
@@ -911,15 +911,15 @@ def replace_file_timezone(file, in_tz, out_tz, out_abbr):
         svpath = file.parent
     else:
         print(
-            f"{Fore.RED} ERROR: File path must be provided as a string or Path object"
+            f"{Fore.RED}WARNING - File path must be provided as a string or Path object"
         )
         return
 
     if not isinstance(in_tz, pytz.BaseTzInfo):
-        print(f"{Fore.RED} ERROR: Timezone must be provided as a pytz timezone object.")
+        print(f"{Fore.RED}WARNING - Timezone must be provided as a pytz timezone object.")
         return
     if not isinstance(out_tz, pytz.BaseTzInfo):
-        print(f"{Fore.RED} ERROR: Timezone must be provided as a pytz timezone object.")
+        print(f"{Fore.RED}WARNING - Timezone must be provided as a pytz timezone object.")
         return
 
     _s1 = tstr.split(" ")[0]

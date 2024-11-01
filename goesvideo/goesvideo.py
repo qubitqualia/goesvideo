@@ -115,7 +115,7 @@ class GoesBase:
             if scenename not in self.band_list:
                 print()
                 print(
-                    f"{Fore.RED} WARNING - Could not find scene name in 'abibands.yaml'. If results "
+                    f"{Fore.RED}WARNING - Could not find scene name in 'abibands.yaml'. If results "
                     f"are unexpected, try adding this scene to the yaml file."
                 )
 
@@ -241,7 +241,7 @@ class GoesDownloader(GoesBase):
             self.datapath.mkdir(exist_ok=True)
         else:
             print(
-                f"{Fore.RED} WARNING - No base directory provided. Data will be saved to current "
+                f"{Fore.RED}WARNING - No base directory provided. Data will be saved to current "
                 f"working directory."
             )
             self.basedir = Path.cwd()
@@ -426,12 +426,12 @@ class GoesDownloader(GoesBase):
                 diff = length_compare - length
                 if diff > 0:
                     print(
-                        f"{Fore.RED} WARNING - Band '{key}' is missing {str(diff)} data files on "
+                        f"{Fore.RED}WARNING - Band '{key}' is missing {str(diff)} data files on "
                         f"AWS."
                     )
                 else:
                     print(
-                        f"{Fore.RED} WARNING - Band '{key}' has {str(diff)} extra data files on "
+                        f"{Fore.RED}WARNING - Band '{key}' has {str(diff)} extra data files on "
                         f"AWS."
                     )
 
@@ -620,7 +620,7 @@ class GoesDownloader(GoesBase):
         if len(filenames) == 0:
             print()
             print(
-                f"{Fore.GREEN} All data is locally available. Skipping all downloads."
+                f"{Fore.GREEN}All data is locally available. Skipping all downloads."
             )
             _exit = True
         else:
@@ -629,7 +629,7 @@ class GoesDownloader(GoesBase):
                 sz = sz / 1000
                 if not force:
                     ask = input(
-                        f"{Fore.RED} WARNING - Requested files have total size of {str(int(sz))} "
+                        f"{Fore.RED}WARNING - Requested files have total size of {str(int(sz))} "
                         f"GB. Proceed? (Y/N): "
                     )
                 else:
@@ -642,7 +642,7 @@ class GoesDownloader(GoesBase):
                 if sz != 0:
                     print(
                         f"{Fore.GREEN}Downloading {str(len(filenames))} file(s) with total size "
-                        f"{str(int(sz))} MB..."
+                        f"{str(int(sz))}MB..."
                     )
                 else:
                     print(f"{Fore.GREEN}Downloading {str(len(filenames))} file(s)...")
@@ -655,7 +655,7 @@ class GoesDownloader(GoesBase):
 
                 if total_failures > 5:
                     print()
-                    print(f"{Fore.RED} Could not download needed files. Exiting...")
+                    print(f"{Fore.RED}Could not download needed files. Exiting...")
                     sys.exit(0)
 
                 while True:
@@ -681,7 +681,7 @@ class GoesDownloader(GoesBase):
                             if tries <= maxtries:
                                 print()
                                 print(
-                                    f"{Fore.RED} AWS call limit exceeded. Waiting to retry..."
+                                    f"{Fore.RED}AWS call limit exceeded. Waiting to retry..."
                                 )
                             tries += 1
                             time.sleep(60)
@@ -689,7 +689,7 @@ class GoesDownloader(GoesBase):
                             if tries <= maxtries:
                                 print()
                                 print(
-                                    f"{Fore.RED} 404 Not Found error for file: {file}."
+                                    f"{Fore.RED}404 Not Found error for file: {file}."
                                 )
                                 print(f"Retrying...")
                             tries += 1
@@ -698,36 +698,36 @@ class GoesDownloader(GoesBase):
                         if tries <= maxtries:
                             print()
                             print(
-                                f"{Fore.RED} Timeout while trying to connect. Waiting to retry..."
+                                f"{Fore.RED}Timeout while trying to connect. Waiting to retry..."
                             )
                         tries += 1
                         time.sleep(60)
                     except botocore.exceptions.ConnectionError:
                         if tries <= maxtries:
                             print()
-                            print(f"{Fore.RED} Connection error. Waiting to retry...")
+                            print(f"{Fore.RED}Connection error. Waiting to retry...")
                         tries += 1
                         time.sleep(60)
                     except botocore.exceptions.ConnectionClosedError:
                         if tries <= maxtries:
                             print()
-                            print(f"{Fore.RED} Connection closed. Waiting to retry...")
+                            print(f"{Fore.RED}Connection closed. Waiting to retry...")
                         tries += 1
                         time.sleep(60)
                     except boto3.exceptions.RetriesExceededError:
                         print()
-                        print(f"{Fore.RED} Max retries exceeded. Waiting to retry...")
+                        print(f"{Fore.RED}Max retries exceeded. Waiting to retry...")
                         tries += 1
                         time.sleep(60)
                     except urllib3.exceptions.SSLError:
                         print()
-                        print(f"{Fore.RED} Encountered SSL error. Waiting to retry...")
+                        print(f"{Fore.RED}Encountered SSL error. Waiting to retry...")
                         tries += 1
                     finally:
                         if tries > maxtries:
                             print()
                             print(
-                                f"{Fore.RED} ERROR - Download failed for file: {file}. Skipping "
+                                f"{Fore.RED}WARNING - Download failed for file: {file}. Skipping "
                                 f"this file."
                             )
                             total_failures += tries
@@ -812,27 +812,27 @@ class GoesDownloader(GoesBase):
         if start_ch:
             keystr = (',').join(start_ch)
             keystr = keystr.rstrip(',')
-            print(f"{Fore.RED} WARNING - Available start time for channel(s) {keystr} is more than 30 minutes outside ")
-            print(f"{Fore.RED}           the requested time of {datetime.isoformat(start_time)}. ")
+            print(f"{Fore.RED}WARNING - Available start time for channel(s) {keystr} is more than 30 minutes outside ")
+            print(f"{Fore.RED}the requested time of {datetime.isoformat(start_time)}. ")
             print()
             print(f"{Fore.RED} Using new start time of {datetime.isoformat(_start)}")
         if end_ch:
             keystr = (',').join(end_ch)
             keystr = keystr.rstrip(',')
-            print(f"{Fore.RED} WARNING - Available end time for channel(s) {keystr} is more than 30 minutes outside ")
-            print(f"{Fore.RED}           the requested time of {datetime.isoformat(end_time)}. ")
+            print(f"{Fore.RED}WARNING - Available end time for channel(s) {keystr} is more than 30 minutes outside ")
+            print(f"{Fore.RED}the requested time of {datetime.isoformat(end_time)}. ")
             print()
-            print(f"{Fore.RED} Using new end time of {datetime.isoformat(_end)}")
+            print(f"{Fore.RED}Using new end time of {datetime.isoformat(_end)}")
 
         self._scene_dict_ready = True
         return
 
     def _handle_index_error(self):
-        for ch in self.remote_scene_files:
-            print(f"{Fore.RED} ERROR - No data available in requested time period for channel {ch}")
-        
-        print(f"{Fore.GREEN} Exiting.")
-        sys.exit(1)
+        _str = ','.join(self.remote_scene_files)
+        _str = _str.rstrip(',')
+        raise exceptions.UnavailableDataError(
+            f"No data found on AWS for the requested time frame for channels: {_str}"
+        )
         
 class GoesCompositor(GoesBase):
     def __init__(self, sat, region, product, base_dir=None):
@@ -840,7 +840,7 @@ class GoesCompositor(GoesBase):
 
         if not base_dir:
             print(
-                f"{Fore.RED} WARNING - No base directory provided. Images will be saved to current "
+                f"{Fore.RED}WARNING - No base directory provided. Images will be saved to current "
                 f"working directory. "
                 f"Any existing data files will not be available for compositing."
             )
@@ -963,7 +963,7 @@ class GoesCompositor(GoesBase):
             if not force:
                 print()
                 ask = input(
-                    f"{Fore.RED} Requested scene is not available using the existing data path(s). "
+                    f"{Fore.RED}Requested scene is not available using the existing data path(s). "
                     f"Download data now? (Y/N): "
                 )
             else:
@@ -981,12 +981,9 @@ class GoesCompositor(GoesBase):
                         except ValueError:
                             pass
                 if len(needed_files) > 0:
-                    print()
-                    print(
-                        f"{Fore.RED} ERROR - There was a problem downloading the necessary files. "
-                        f"Exiting..."
+                    raise exceptions.GenericDownloadError(
+                        "There was a problem downloading the necessary files from AWS."
                     )
-                    sys.exit(0)
             else:
                 sys.exit(0)
 
@@ -1000,7 +997,7 @@ class GoesCompositor(GoesBase):
             if not force:
                 print()
                 ask = input(
-                    f"{Fore.RED} WARNING - Image subfolder provided by the 'folder_name' argument "
+                    f"{Fore.RED}WARNING - Image subfolder provided by the 'folder_name' argument "
                     f"already exists. \n Existing images will be overwritten! Continue anyway? (Y/N): "
                 )
             else:
@@ -1114,7 +1111,7 @@ class GoesCompositor(GoesBase):
                     except OSError as e:
                         print()
                         print(
-                            f"{Fore.RED} ERROR - Encountered a corrupted data file while generating "
+                            f"{Fore.RED}WARNING - Encountered a corrupted data file while generating "
                             f"composite. Attempting to download it again..."
                         )
                         print(e)
@@ -1134,7 +1131,7 @@ class GoesCompositor(GoesBase):
                         except OSError:
                             print()
                             print(
-                                f"{Fore.RED} ERROR - Still having an issue with this file after "
+                                f"{Fore.RED}WARNING - Still having an issue with this file after "
                                 f"downloading it again. Skipping..."
                             )
                             skip = True

@@ -16,6 +16,7 @@ import rasterio.crs
 from rasterio.enums import Resampling
 from tqdm import tqdm
 from goesvideo.utils import editortools, gistools
+from goesvideo import exceptions
 
 """
 The GoesSceneEditor class is intended for post-processing of GOES scenes composited using
@@ -85,7 +86,7 @@ class GoesSceneEditor():
             bbox = (metadata['Crop_Box'][0], metadata['Crop_Box'][1],
                     metadata['Crop_Box'][2], metadata['Crop_Box'][3])
             try:
-                bbox = gistools.transform_bbox(bbox, "EPSG: 4326", crs)
+                bbox = gistools.transform_bbox(bbox, "EPSG:4326", crs)
             except rasterio._err.CPLE_AppDefinedError:
                 pass
         else:
@@ -112,8 +113,8 @@ class GoesSceneEditor():
                     self.img_filenames.append(row[1])
                     self.img_timestamps.append(tz.localize(datetime.datetime.fromisoformat(row[0])))
                 else:
-                    print(f"{Fore.RED} WARNING - File \'{row[1]}\' missing from \'{self.scene_folder}\'. Results may"
-                          f"                     be unexpected.")
+                    print(f"{Fore.RED}WARNING - File \'{row[1]}\' missing from \'{self.scene_folder}\'. Results may "
+                          f"be unexpected.")
         
         if self.img_filenames[0].split('.')[-1] == 'png':
             self.type_is_geotiff = False
@@ -369,9 +370,9 @@ class GoesSceneEditor():
         """
 
         if not self.font['path']:
-            print(f'{Fore.RED}ERROR - Must set ttf font path by calling \'set_font\'.')
-            print(f'{Fore.GREEN}Exiting...')
-            sys.exit(1)
+            raise exceptions.UnspecifiedFontPathError(
+                "Font path for ttf font must be set by calling \'set_font\'"
+            )
         if not self.font['color']:
             self.font['color'] = (255, 0, 0)
         if not self.font['size']:
@@ -430,34 +431,31 @@ class GoesSceneEditor():
         else:
             newopts[objtype] = {}
 
+
         # Check position argument to make sure it is correct for the given objtype
         if objtype == 'text':
             if not isinstance(position, tuple) and not isinstance(position, str):
-                print(f"{Fore.RED}ERROR - Position of \'{objtype}\' must be passed as a tuple or a string to \'add_annotations\'.")
+                raise exceptions.InvalidArgumentError(f"Position of \'{objtype}\' must be passed as a tuple or string to "
+                                                      "\'add_annotation\'.")
 
         elif objtype == 'circle':
             if not isinstance(position, tuple):
-                print(f"{Fore.RED}ERROR - Position of \'{objtype}\' must be passed as a tuple to \'add_annotation\'.")
-                print(f"{Fore.GREEN}Exiting...")
-                sys.exit(1)
+                raise exceptions.InvalidArgumentError(
+                    f"Position of \'{objtype}\' must be passed as a tuple to \'add_annotation\'.")
         elif objtype == 'arrow':
             if not isinstance(position, list):
-                print(f"{Fore.RED}ERROR - Position of \'{objtype}\' must be passed as a list containing two tuples.")
-                print(f"{Fore.GREEN}Exiting...")
-                sys.exit(1)
+                raise exceptions.InvalidArgumentError(
+                    f"Position of \'{objtype}\' must be passed as a list containing two tuples to \'add_annotation\'.")
             elif len(position) != 2:
-                print(f"{Fore.RED}ERROR - Position of \'{objtype}\' must be passed as a list containing two tuples.")
-                print(f"{Fore.GREEN}Exiting...")
-                sys.exit(1)
+                raise exceptions.InvalidArgumentError(
+                    f"Position of \'{objtype}\' must be passed as a list containing two tuples to \'add_annotation\'.")
         elif objtype == 'triangle':
             if not isinstance(position, list):
-                print(f"{Fore.RED}ERROR - Position of \'{objtype}\' must be passed as a list containing three tuples.")
-                print(f"{Fore.GREEN}Exiting...")
-                sys.exit(1)
+                raise exceptions.InvalidArgumentError(
+                    f"Position of \'{objtype}\' must be passed as a list containing three tuples to \'add_annotation\'.")
             elif len(position) != 3:
-                print(f"{Fore.RED}ERROR - Position of \'{objtype}\' must be passed as a list containing three tuples.")
-                print(f"{Fore.GREEN}Exiting...")
-                sys.exit(1)
+                raise exceptions.InvalidArgumentError(
+                    f"Position of \'{objtype}\' must be passed as a list containing three tuples to \'add_annotation\'.")
         
         # Pack label
         if label:
@@ -469,9 +467,8 @@ class GoesSceneEditor():
                     if self.font['path']:
                         newopts[objtype]['label']['fontpath'] = self.font['path']
                     else:
-                        print(f'{Fore.RED}ERROR - Must set ttf font path by calling \'set_font\' or pass font options as labelopts.')
-                        print(f'{Fore.GREEN}Exiting...')
-                        sys.exit(1)
+                        raise exceptions.UnspecifiedFontPathError("Must set ttf font path by calling \'set_font\' or"
+                                                                  "pass \'fontsize\' as labelopts.")
                 if not 'fontcolor' in newopts[objtype]['label']:
                     if self.font['color']:
                         newopts[objtype]['label']['fontcolor'] = self.font['color']
@@ -486,9 +483,8 @@ class GoesSceneEditor():
                 if self.font['path']:
                     newopts[objtype]['label']['fontpath'] = self.font['path']
                 else:
-                    print(f'{Fore.RED}ERROR - Must set ttf font path by calling \'set_font\' or pass font options as kwargs.')
-                    print(f'{Fore.GREEN}Exiting...')
-                    sys.exit(1)
+                    raise exceptions.UnspecifiedFontPathError("Must set ttf font path by calling \'set_font\' or"
+                                                              "pass \'fontsize\' as labelopts.")
                 if self.font['color']:
                     newopts[objtype]['label']['fontcolor'] = self.font['color']
                 else:
@@ -565,7 +561,7 @@ class GoesSceneEditor():
                 else:
                     is_geographic = False
                     is_dms = False
-            elif isinstance(pos1[0], float):
+            elif isinstance(position[0][0], float):
                 is_geographic = True
                 is_dms = False
             else:
@@ -691,18 +687,15 @@ class GoesSceneEditor():
         # Ensure overlay bbox matches base
         lon_ok, lat_ok = gistools.check_bbox(oleditor.geodata['image']['bbox'], self.geodata['image']['bbox'], degtol=bbox_tol)
         if not lon_ok or not lat_ok:
-            print(f"{Fore.RED}ERROR - Overlay bounds are not within the specified tolerance for the current session. Try "
-                  f"calling \'recrop\' on the base and/or overlay image sets.")
-            print(f"{Fore.GREEN}Exiting...")
-            sys.exit(1)
+            raise exceptions.MismatchedBoundsError("Overlay bounds are not within the specified tolerance of the base "
+                                                   "image for the current session. Try calling \'recrop\' on the base "
+                                                   "and/or overlay image sets or pass \'force_recrop\' to function.")
           
         # Ensure projections match
         if self.geodata['image']['crs'] != oleditor.geodata['image']['crs']:
             if not force_recrop:
-                print(f"{Fore.RED}ERROR - Overlay CRS does not match the current session. Try calling \'reproject\' on the "
-                      f"overlay image set or setting the \'force_recrop\' parameter to True.")
-                print(f"{Fore.GREEN}Exiting...")
-                sys.exit(1)
+                raise exceptions.MismatchedCRS("Overlay CRS does not match the current session. Try calling \'reproject\' "
+                                               "on the overlay image set.")
             else:
                 _bbox = gistools.transform_bbox(self.geodata['image']['bbox'],
                                                 self.geodata['image']['crs'],
@@ -714,10 +707,9 @@ class GoesSceneEditor():
         if self.geodata['image']['raster_profile']['height'] != oleditor.geodata['image']['raster_profile']['height']:
             if self.geodata['image']['raster_profile']['width'] != oleditor.geodata['image']['raster_profile']['width']:
                 if not force_resize:
-                    print(f"{Fore.RED}ERROR - Overlay dimensions do not match the current session. Try calling \'resize\' "
-                          f"on the overlay image set or setting the \'force_resize\' parameter to True.")
-                    print(f"{Fore.GREEN}Exiting...")
-                    sys.exit(1)
+                    raise exceptions.MismatchedImageSize("Overlay dimensions do not match the current session. Try "
+                                                         "calling \'resize\' on the overlay image set or pass "
+                                                         "\'force_resize\' to function.")
                 else:
                     oleditor.resize(self.geodata['image']['raster_profile']['width'],
                                     self.geodata['image']['raster_profile']['height'],

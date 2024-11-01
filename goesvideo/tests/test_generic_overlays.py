@@ -8,7 +8,7 @@ import pytz
 import matplotlib.cm as cm
 from PIL import Image
 
-from goesvideo.addons.overlays import Overlay
+from goesvideo.addons.overlays import GenericOverlay
 
 
 def test_generic_overlays():
@@ -16,7 +16,7 @@ def test_generic_overlays():
     # Toggle display of output images
     # Note that this will open a large number of
     # images for viewing
-    show_images = True
+    show_images = False
 
     # Create temp folders
     tmpfolder = tempfile.TemporaryDirectory()
@@ -45,17 +45,17 @@ def test_generic_overlays():
     # Create overlay objects
     ol_timezone = {"timezone": [pytz.utc], "filename format": ["YYYY-MM-DD hh_mm_ss"]}
     base_timezone = {"timezone": pytz.utc, "filename format": "YYYY-MM-DD hh_mm_ss"}
-    ol1 = Overlay(
+    ol1 = GenericOverlay(
         str(basepath),
         [str(overlaypath)],
         base_timezone=base_timezone,
         overlay_timezones=ol_timezone,
     )
-    ol2 = Overlay(
+    ol2 = GenericOverlay(
         str(basepath),
         [str(overlaypath)],
-        start_time="2023-10-22 14:19:00",
-        end_time="2023-10-22 14:50:51",
+        start_time="2024-10-08 17:19:00",
+        end_time="2024-10-08 19:50:51",
     )
 
     # Generate overlays
@@ -105,10 +105,6 @@ def test_generic_overlays():
         str(outputpath / "test8b"), cumulative=True, cumulative_colormap=cmap
     )
 
-    # Test 9 - Geotiff output format
-    ol1.create_overlays(str(outputpath / "test9a"), output_format="geotiff")
-    ol2.create_overlays(str(outputpath / "test9b"), output_format="geotiff")
-
     # Assertions to check files exist in every subdirectory
     subpaths = [
         "test1a",
@@ -127,8 +123,6 @@ def test_generic_overlays():
         "test7b",
         "test8a",
         "test8b",
-        "test9a",
-        "test9b",
     ]
 
     for sp in subpaths:

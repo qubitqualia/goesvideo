@@ -19,7 +19,7 @@ from matplotlib import cm
 from goesvideo.utils import gistools, editortools
 
 """
-The Overlay class is intended to produce composite images from a base set of images (typically a 
+The GenericOverlay class is intended to produce composite images from a base set of images (typically a 
 static/dynamic visible satellite image of an area or a map) and one or more overlay sets 
 (e.g. fire detection). The image sets should all cover the same time frame, but they do not require 
 exactly matching timestamps. The class will set the time interval between frames to the lowest 
@@ -29,7 +29,7 @@ frames as required to match the lowest interval.
 """
 
 
-class Overlay:
+class GenericOverlay:
 
     def __init__(
         self,
@@ -195,9 +195,9 @@ class Overlay:
         # If no output resolution is specified, use that of the base image
         if not res:
             if self.base_is_geotiff:
-                res = gistools.get_shape_geotiff(self.baseimgfiles[0])
+                res = gistools.get_shape(str(self.baseimgfiles[0]))
             else:
-                res = gistools.get_shape_img(self.baseimgfiles[0])
+                res = Image.open(str(self.baseimgfiles[0])).size
 
         # Check user-provided bbox to make sure it at least overlaps partially with the base/overlay
         # images. If not, default to using the maximal common bounds.
