@@ -1,42 +1,43 @@
-import os
-import sys
-import json
-from pathlib import Path
-import shutil
 import csv
+import hashlib
+import json
+import os
+import shutil
+import sys
 import tempfile
 import time
-import hashlib
-from importlib.resources import files
+import uuid
 from copy import deepcopy
 from datetime import datetime, timedelta
+from importlib.resources import files
+from pathlib import Path
 
-import uuid
-import yaml
-import urllib3
-import pytz
 import boto3
-import botocore.exceptions
 import boto3.exceptions
-from botocore import UNSIGNED
-from botocore.config import Config
+import botocore.exceptions
+import numpy as np
+import pytz
+import rasterio.crs
 import satpy
 import satpy.utils
-import numpy as np
-from PIL import Image
-from moviepy.editor import ImageSequenceClip
-from matplotlib import colormaps
-from pyresample.geometry import AreaDefinition
-import rasterio.crs
-from colorama import Fore
-from tqdm import tqdm
-from satpy.writers import to_image
 import trollimage.colormap as cm
+import urllib3
+import yaml
+from PIL import Image
+from botocore import UNSIGNED
+from botocore.config import Config
+from colorama import Fore
+from matplotlib import colormaps
+from moviepy.editor import ImageSequenceClip
+from pyresample.geometry import AreaDefinition
+from satpy.writers import to_image
+from tqdm import tqdm
 
-#import goesvideo.utils.editortools as utils
+import goesvideo.exceptions as exceptions
+
+# import goesvideo.utils.editortools as utils
 from goesvideo.utils import editortools as utils
 from goesvideo.utils import gistools
-import goesvideo.exceptions as exceptions
 
 
 class GoesBase:
@@ -80,17 +81,17 @@ class GoesBase:
         if product[-1] == "F" or product[-1] == "C":
             if "FDC" not in product:
                 self.product = product
-                #print(
+                # print(
                 #    f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' or "
                 #    f"'C' indicating region."
-                #)
+                # )
             else:
                 if "FDCC" in product or "FDCF" in product:
                     self.product = product
-                    #print(
+                    # print(
                     #    f"{Fore.RED} WARNING - Product should be specified without the trailing 'F' "
                     #    f"or 'C' indicating region."
-                    #)
+                    # )
                 else:
                     if self.region == "conus":
                         self.product = product + "C"
@@ -597,7 +598,7 @@ class GoesDownloader(GoesBase):
             else:
                 year = (tfile + timedelta(days=1)).timetuple().tm_year
                 day = (tfile + timedelta(days=1)).timetuple().tm_yday
-    
+
         print(f"{Fore.GREEN}Done!")
         self._init_verbosity_on = False
 
@@ -619,9 +620,7 @@ class GoesDownloader(GoesBase):
 
         if len(filenames) == 0:
             print()
-            print(
-                f"{Fore.GREEN}All data is locally available. Skipping all downloads."
-            )
+            print(f"{Fore.GREEN}All data is locally available. Skipping all downloads.")
             _exit = True
         else:
             sz = sum(sizes) / 1000000
@@ -691,7 +690,7 @@ class GoesDownloader(GoesBase):
                                 print(
                                     f"{Fore.RED}404 Not Found error for file: {file}."
                                 )
-                                print(f"Retrying...")
+                                print("Retrying...")
                             tries += 1
                             time.sleep(0.5)
                     except botocore.exceptions.ConnectTimeoutError:
@@ -795,7 +794,7 @@ class GoesDownloader(GoesBase):
                 )
             except IndexError:
                 self._handle_index_error()
-        
+
         start_ch = []
         end_ch = []
         for i, key in enumerate(self.remote_scene_files):
@@ -803,23 +802,27 @@ class GoesDownloader(GoesBase):
             _end = end_times[i]
             self.remote_scene_files[key]["start_time"] = _start
             self.remote_scene_files[key]["end_time"] = _end
-            
+
             if abs((_start - start_time).total_seconds()) / 60 > 30:
                 start_ch.append(key)
             if abs((_end - end_time).total_seconds()) / 60 > 30:
                 end_ch.append(key)
-            
+
         if start_ch:
-            keystr = (',').join(start_ch)
-            keystr = keystr.rstrip(',')
-            print(f"{Fore.RED}WARNING - Available start time for channel(s) {keystr} is more than 30 minutes outside ")
+            keystr = (",").join(start_ch)
+            keystr = keystr.rstrip(",")
+            print(
+                f"{Fore.RED}WARNING - Available start time for channel(s) {keystr} is more than 30 minutes outside "
+            )
             print(f"{Fore.RED}the requested time of {datetime.isoformat(start_time)}. ")
             print()
             print(f"{Fore.RED} Using new start time of {datetime.isoformat(_start)}")
         if end_ch:
-            keystr = (',').join(end_ch)
-            keystr = keystr.rstrip(',')
-            print(f"{Fore.RED}WARNING - Available end time for channel(s) {keystr} is more than 30 minutes outside ")
+            keystr = (",").join(end_ch)
+            keystr = keystr.rstrip(",")
+            print(
+                f"{Fore.RED}WARNING - Available end time for channel(s) {keystr} is more than 30 minutes outside "
+            )
             print(f"{Fore.RED}the requested time of {datetime.isoformat(end_time)}. ")
             print()
             print(f"{Fore.RED}Using new end time of {datetime.isoformat(_end)}")
@@ -828,12 +831,13 @@ class GoesDownloader(GoesBase):
         return
 
     def _handle_index_error(self):
-        _str = ','.join(self.remote_scene_files)
-        _str = _str.rstrip(',')
+        _str = ",".join(self.remote_scene_files)
+        _str = _str.rstrip(",")
         raise exceptions.UnavailableDataError(
             f"No data found on AWS for the requested time frame for channels: {_str}"
         )
-        
+
+
 class GoesCompositor(GoesBase):
     def __init__(self, sat, region, product, base_dir=None):
         super().__init__(sat, region, product)
@@ -864,8 +868,10 @@ class GoesCompositor(GoesBase):
         self.satpy_cache = False
         self.satpy_cache_dir = None
         self.last_img_folder = None
-        self.default_resample_res = 500     #this is the most resolution available from GOES; if desired can change 
-                                            #to 1000 or 2000 if working with channels with lower resolution 
+        self.default_resample_res = (
+            500
+        )  # this is the most resolution available from GOES; if desired can change
+        # to 1000 or 2000 if working with channels with lower resolution
 
     def create_composites(
         self,
@@ -1158,37 +1164,54 @@ class GoesCompositor(GoesBase):
                     # area in the scene. Otherwise, use the area and resampler provided by the user
                     if not resample:
                         if bbox:
-                            if self.satellite == 'goes-east':
-                                proj4_goes = ("+proj=geos +lon_0=-75 +h=35786023 +x_0=0 +y_0=0 +ellps=GRS80 +units=m "
-                                             "+no_defs +sweep=x +type=crs")
-                                _lon = '-75'
-                            elif self.satellite == 'goes-west':
-                                proj4_goes = ("+proj=geos +lon_0=-137 +h=35786023 +x_0=0 +y_0=0 +ellps=GRS80 +units=m "
-                                             "+no_defs +sweep=x +type=crs")
-                                _lon = '-137'
-                            bbox_proj_coords = gistools.transform_bbox(bbox, rasterio.crs.CRS.from_epsg(4326),
-                                                                       rasterio.crs.CRS.from_proj4(proj4_goes))
-                            width = int(abs((bbox_proj_coords[0] - bbox_proj_coords[2])) / self.default_resample_res)
-                            height = int(abs((bbox_proj_coords[1] - bbox_proj_coords[3])) / self.default_resample_res)
-                            
-                            custom_area = AreaDefinition('goes_custom',
-                                                      'bbox-bounded goes area',
-                                                         'proj_id_1',
-                                                      {'ellps': 'GRS80',
-                                                                'h': '35786023',
-                                                                'lon_0': _lon,
-                                                                'no_defs': 'None',
-                                                                'proj': 'geos',
-                                                                'sweep': 'x',
-                                                                'type': 'crs',
-                                                                'units': 'm',
-                                                                'x_0': '0',
-                                                                'y_0': '0'},
-                                                                width,
-                                                                height,
-                                                                bbox_proj_coords)
+                            if self.satellite == "goes-east":
+                                proj4_goes = (
+                                    "+proj=geos +lon_0=-75 +h=35786023 +x_0=0 +y_0=0 +ellps=GRS80 +units=m "
+                                    "+no_defs +sweep=x +type=crs"
+                                )
+                                _lon = "-75"
+                            elif self.satellite == "goes-west":
+                                proj4_goes = (
+                                    "+proj=geos +lon_0=-137 +h=35786023 +x_0=0 +y_0=0 +ellps=GRS80 +units=m "
+                                    "+no_defs +sweep=x +type=crs"
+                                )
+                                _lon = "-137"
+                            bbox_proj_coords = gistools.transform_bbox(
+                                bbox,
+                                rasterio.crs.CRS.from_epsg(4326),
+                                rasterio.crs.CRS.from_proj4(proj4_goes),
+                            )
+                            width = int(
+                                abs((bbox_proj_coords[0] - bbox_proj_coords[2]))
+                                / self.default_resample_res
+                            )
+                            height = int(
+                                abs((bbox_proj_coords[1] - bbox_proj_coords[3]))
+                                / self.default_resample_res
+                            )
+
+                            custom_area = AreaDefinition(
+                                "goes_custom",
+                                "bbox-bounded goes area",
+                                "proj_id_1",
+                                {
+                                    "ellps": "GRS80",
+                                    "h": "35786023",
+                                    "lon_0": _lon,
+                                    "no_defs": "None",
+                                    "proj": "geos",
+                                    "sweep": "x",
+                                    "type": "crs",
+                                    "units": "m",
+                                    "x_0": "0",
+                                    "y_0": "0",
+                                },
+                                width,
+                                height,
+                                bbox_proj_coords,
+                            )
                             new_scene = scene.resample(custom_area)
-                        else:                        
+                        else:
                             try:
                                 new_scene = scene.resample(
                                     scene.finest_area(),
@@ -1231,7 +1254,7 @@ class GoesCompositor(GoesBase):
                             )
 
                     # Crop scene to bbox if provided
-                    #if bbox:
+                    # if bbox:
                     #    new_scene_crop = new_scene.crop(ll_bbox=bbox)
                     #    new_scene = new_scene_crop.resample(resampler='native')
 
@@ -1269,32 +1292,41 @@ class GoesCompositor(GoesBase):
                     if output_format == "simple_image":
                         # Write geotiff data to metadata.json for future use
                         if counter == 0:
-                            tmpfile = tempfile.NamedTemporaryFile("w+b", suffix='.tif', delete=False,
-                                                                  delete_on_close=False)
+                            tmpfile = tempfile.NamedTemporaryFile(
+                                "w+b", suffix=".tif", delete=False
+                            )
+
                             _tifout = tmpfile.name
                             new_scene.save_dataset(
                                 scenename,
                                 writer="geotiff",
                                 filename=_tifout,
                                 fill_value=False,
-                                **kwargs
+                                **kwargs,
                             )
-                            with rasterio.open(_tifout, 'r') as src:
+                            with rasterio.open(_tifout, "r") as src:
                                 profile = src.profile
 
                             with open(str(folder_path / "metadata.json"), "r+") as f:
-                                _dict = json.load(f)                                
-                                _dict['geodata'] = profile.data
-                                crs_str = _dict['geodata']['crs'].wkt
-                                _dict['geodata'].pop('crs', None)
-                                _t = _dict['geodata'].pop('transform', None)
-                                _dict['geodata']['transform'] = [_t.a, _t.b, _t.c, _t.d, _t.e, _t.f]
-                                _dict['geodata']['crs'] = crs_str
+                                _dict = json.load(f)
+                                _dict["geodata"] = profile.data
+                                crs_str = _dict["geodata"]["crs"].wkt
+                                _dict["geodata"].pop("crs", None)
+                                _t = _dict["geodata"].pop("transform", None)
+                                _dict["geodata"]["transform"] = [
+                                    _t.a,
+                                    _t.b,
+                                    _t.c,
+                                    _t.d,
+                                    _t.e,
+                                    _t.f,
+                                ]
+                                _dict["geodata"]["crs"] = crs_str
                                 f.seek(0)
                                 json.dump(_dict, f, indent=4)
-                            
+
                             os.unlink(_tifout)
-                        
+
                         counter += 1
                         svname += ".png"
                         new_scene.save_dataset(
@@ -1304,8 +1336,7 @@ class GoesCompositor(GoesBase):
                             fill_value=False,
                             **kwargs,
                         )
-                    elif output_format == "geotiff":                        
-                            
+                    elif output_format == "geotiff":
                         svname += ".tif"
                         # These settings are specific to the ABI-L2-FDC product
                         if scenename == "Power" or scenename == "Temp":
@@ -1318,7 +1349,7 @@ class GoesCompositor(GoesBase):
                                 (200, (1.0, 0.0, 0.0, 0.6)),
                             )
                             img.convert("LA")
-                            #img.apply_pil(convert, output_mode="LA", fun_args="LA")
+                            # img.apply_pil(convert, output_mode="LA", fun_args="LA")
                             img.colorize(cmap)
                             img.rio_save(str(folder_path / svname))
                         else:
@@ -1329,22 +1360,29 @@ class GoesCompositor(GoesBase):
                                 keep_palette=True,
                                 **kwargs,
                             )
-                        
+
                         if counter == 0:
                             with rasterio.open(str(folder_path / svname)) as src:
                                 profile = src.profile
-                            
+
                             with open(str(folder_path / "metadata.json"), "r+") as f:
                                 _dict = json.load(f)
-                                _dict['geodata'] = profile.data
-                                crs_str = _dict['geodata']['crs'].wkt
-                                _dict['geodata'].pop('crs', None)
-                                _t = _dict['geodata'].pop('transform', None)
-                                _dict['geodata']['transform'] = [_t.a, _t.b, _t.c, _t.d, _t.e, _t.f]
-                                _dict['geodata']['crs'] = crs_str
+                                _dict["geodata"] = profile.data
+                                crs_str = _dict["geodata"]["crs"].wkt
+                                _dict["geodata"].pop("crs", None)
+                                _t = _dict["geodata"].pop("transform", None)
+                                _dict["geodata"]["transform"] = [
+                                    _t.a,
+                                    _t.b,
+                                    _t.c,
+                                    _t.d,
+                                    _t.e,
+                                    _t.f,
+                                ]
+                                _dict["geodata"]["crs"] = crs_str
                                 f.seek(0)
                                 json.dump(_dict, f, indent=4)
-                        
+
                         counter += 1
 
                     with open(str(folder_path / "timestamps.csv"), "a") as f:
@@ -1528,7 +1566,6 @@ class GoesAnimator(GoesBase):
                 req_bands_pop = req_bands
                 data_files = self.tmpdir.glob("*.nc")
                 if data_files:
-                    data_available = True
                     for f in data_files:
                         tstamp = self._get_timestamp_from_filename(str(f))
                         ch = self._get_band_from_filename(str(f))
@@ -1582,7 +1619,7 @@ class GoesAnimator(GoesBase):
 
                             else:
                                 raise exceptions.InvalidArgumentError(
-                                    f" Time should be an isoformat string."
+                                    " Time should be an isoformat string."
                                 )
 
                         gc = GoesCompositor(
@@ -1939,7 +1976,7 @@ class GoesAnimator(GoesBase):
                     img = utils.add_text(img, **text)
 
                 if codec == "rawvideo" or codec == "png":
-                    img = editortools.convert_color(img)
+                    img = utils.convert_color(img)
 
                 imgname = tmpfolderpath / ("image_" + str(i) + ".png")
                 img.save(imgname)

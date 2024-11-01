@@ -5,41 +5,38 @@ class InvalidArgumentError(Exception):
         if message:
             super().__init__(message)
 
-class UnavailableDataError(Exception):
 
+class UnavailableDataError(Exception):
     def __init__(self, message):
         if message:
             super().__init__(message)
 
 
 class GenericDownloadError(Exception):
-
     def __init__(self, message):
         if message:
             super().__init__(message)
+
 
 class UnspecifiedFontPathError(Exception):
-
     def __init__(self, message):
         if message:
             super().__init__(message)
 
-class MismatchedBoundsError(Exception):
 
+class MismatchedBoundsError(Exception):
     def __init__(self, message):
         if message:
             super().__init__(message)
 
 
 class MismatchedCRS(Exception):
-
     def __init__(self, message):
         if message:
             super().__init__(message)
 
 
 class MismatchedImageSize(Exception):
-
     def __init__(self, message):
         if message:
             super().__init__(message)

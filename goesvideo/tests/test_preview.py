@@ -1,36 +1,40 @@
 import os
+import shutil
 import sys
 import tempfile
-from pathlib import Path
 from importlib.resources import files as importfiles
+from pathlib import Path
 
-from PIL import Image
 import pytest
 import pytz
-import shutil
+from PIL import Image
 
 from goesvideo import GoesAnimator
 from goesvideo.tests import treegenerator
 
+try:
+    import cv2
+
+    has_cv2 = True
+except ModuleNotFoundError:
+    has_cv2 = False
+
 
 def test_preview():
-
     # Toggle display of image
     show_image = True
 
     # Generate expected folder tree
     tmpfolder = tempfile.TemporaryDirectory()
     base_dir = Path(tmpfolder.name)
-    treegenerator.generate_tree(base_dir, 'BigHorn', copy_ncfiles=True)
+    treegenerator.generate_tree(base_dir, "BigHorn", copy_ncfiles=True)
 
     ga = GoesAnimator("goes-east", "full", "ABI-L2-CMIP", base_dir=base_dir)
 
     imgpath = importfiles("goesvideo") / "tests" / "Test Images"
     imgfiles = list(imgpath.glob("*.png"))
 
-    fontpath = str(
-        importfiles("goesvideo") / "tests" / "Fonts" / "Roboto-Regular.ttf"
-    )
+    fontpath = str(importfiles("goesvideo") / "tests" / "Fonts" / "Roboto-Regular.ttf")
 
     timestamps = {
         "label": "2023-01-01 00:00:00",
@@ -51,22 +55,23 @@ def test_preview():
         "opacity": 0.7,
     }
 
-    arrow = {
-        "label": {
-            "label": "this is an arrow",
-            "padding": (10, 10),
-            "fontpath": fontpath,
-            "fontcolor": (255, 0, 0),
-            "fontsize": 20,
+    if has_cv2:
+        arrow = {
+            "label": {
+                "label": "this is an arrow",
+                "padding": (10, 10),
+                "fontpath": fontpath,
+                "fontcolor": (255, 0, 0),
+                "fontsize": 20,
+                "opacity": 0.7,
+            },
+            "tiplength": 0.1,
+            "width": 2,
+            "color": (255, 0, 0),
             "opacity": 0.7,
-        },
-        "tiplength": 0.1,
-        "width": 2,
-        "color": (255, 0, 0),
-        "opacity": 0.7,
-        "start_position": (200, 200),
-        "end_position": (400, 400),
-    }
+            "start_position": (200, 200),
+            "end_position": (400, 400),
+        }
 
     circle = {
         "label": {
@@ -87,15 +92,18 @@ def test_preview():
     kwargs = {}
     kwargs["timestamps"] = timestamps
     kwargs["text"] = text
-    kwargs["arrow"] = arrow
+    if has_cv2:
+        kwargs["arrow"] = arrow
     kwargs["circle"] = circle
 
     testimg = Image.open(imgfiles[0])
     testimg = testimg.resize((1024, 768))
-    tmpimgfile = tempfile.NamedTemporaryFile("w+b", suffix='.png', delete=False, delete_on_close=False)
+    tmpimgfile = tempfile.NamedTemporaryFile("w+b", suffix=".png", delete=False)
     testimg.save(tmpimgfile.name)
     testimg.close()
-    img = ga.preview(use_image_file=tmpimgfile.name, **kwargs, res=(1024, 768), display=False)
+    img = ga.preview(
+        use_image_file=tmpimgfile.name, **kwargs, res=(1024, 768), display=False
+    )
     os.unlink(tmpimgfile.name)
 
     assert isinstance(img, Image.Image)

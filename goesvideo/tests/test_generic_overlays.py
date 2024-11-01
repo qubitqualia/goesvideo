@@ -1,18 +1,17 @@
 import os
 import shutil
 import tempfile
-from pathlib import Path
 from importlib.resources import files as importfiles
+from pathlib import Path
 
-import pytz
 import matplotlib.cm as cm
+import pytz
 from PIL import Image
 
 from goesvideo.addons.overlays import GenericOverlay
 
 
 def test_generic_overlays():
-
     # Toggle display of output images
     # Note that this will open a large number of
     # images for viewing

@@ -1,16 +1,15 @@
 import sys
-from pathlib import Path
 import tempfile
 from importlib.resources import files as importfiles
+from pathlib import Path
 
-from PIL import Image
 import pytest
+from PIL import Image
 
 from goesvideo import GoesCompositor
 
 
 def test_compositing():
-
     # Toggle display of image
     show_image = True
 
@@ -23,7 +22,6 @@ def test_compositing():
     sat = "goes-east"
     region = "full"
     product = "ABI-L2-CMIP"
-    scene = "true_color"
 
     # Create composite
     gc = GoesCompositor(sat, region, product, base_dir=tmpfolder.name)

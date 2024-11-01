@@ -1,15 +1,14 @@
 import sys
 from importlib.resources import files as importfiles
 
-from PIL import Image
 import pytest
+from PIL import Image
 from moviepy.video.VideoClip import VideoClip
 
 from goesvideo.utils import editortools
 
 
 def test_video_edit():
-
     # Toggle display of output image
     show_image = True
 
@@ -18,9 +17,7 @@ def test_video_edit():
         str(importfiles("goesvideo") / "tests" / "Test Videos" / "video.mp4")
     )
 
-    fontpath = str(
-        importfiles("goesvideo") / "tests" / "Fonts" / "Roboto-Regular.ttf"
-    )
+    fontpath = str(importfiles("goesvideo") / "tests" / "Fonts" / "Roboto-Regular.ttf")
 
     # Test video annotation
     txt = {
@@ -32,7 +29,7 @@ def test_video_edit():
         "opacity": 0.7,
     }
     kwargs = {}
-    kwargs['text'] = txt
+    kwargs["text"] = txt
     newclip = clip.annotate(0, 1, freeze=True, **kwargs)
 
     assert isinstance(newclip, VideoClip)

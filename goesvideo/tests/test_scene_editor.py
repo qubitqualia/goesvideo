@@ -1,43 +1,46 @@
-import os
-import sys
 import json
-from pathlib import Path
-from importlib.resources import files as importfiles
+import os
 import shutil
+import sys
 import tempfile
 import time
+from importlib.resources import files as importfiles
+from pathlib import Path
 
-from PIL import Image
-import pytz
 import pytest
+import pytz
 import rasterio.crs
+from PIL import Image
 
 from goesvideo.addons.sceneeditor import GoesSceneEditor
-from goesvideo.utils import gistools
 from goesvideo.tests import treegenerator
+from goesvideo.utils import gistools
+
 
 def check_metadata(key, metadata):
-    crs = rasterio.crs.CRS.from_wkt(metadata['geodata']['crs'])
+    crs = rasterio.crs.CRS.from_wkt(metadata["geodata"]["crs"])
     retval = (None, None)
-    if key == 'bbox':
-        bbox = metadata['Crop_Box']
-        #if crs != "EPSG:4326":
+    if key == "bbox":
+        bbox = metadata["Crop_Box"]
+        # if crs != "EPSG:4326":
         #    bbox = gistools.transform_bbox(bbox, crs, "EPSG:4326")
         retval = (bbox,)
-    elif key == 'size':
-        width = metadata['geodata']['width']
-        height = metadata['geodata']['height']
+    elif key == "size":
+        width = metadata["geodata"]["width"]
+        height = metadata["geodata"]["height"]
         retval = (width, height)
-    elif key == 'crs':
+    elif key == "crs":
         retval = (crs,)
 
     return retval
 
+
 def get_metadata(_dir):
-    with open(str(_dir / "metadata.json"), 'r') as f:
+    with open(str(_dir / "metadata.json"), "r") as f:
         metadata = json.load(f)
 
     return metadata
+
 
 def test_scene_editor():
     """
@@ -55,11 +58,8 @@ def test_scene_editor():
     # Specify base dir if you wish to inspect the output of the test functions below
     base_dir = None
 
-
     # Set fontpath
-    fontpath = str(
-        importfiles("goesvideo") / "tests" / "Fonts" / "Roboto-Regular.ttf"
-    )
+    fontpath = str(importfiles("goesvideo") / "tests" / "Fonts" / "Roboto-Regular.ttf")
 
     # Grab test images - png base, tif overlay
     p = importfiles("goesvideo") / "tests" / "Test Images"
@@ -78,7 +78,9 @@ def test_scene_editor():
         base_dir = Path(base_dir_tmp.name)
         delete_flag = True
 
-    treegenerator.generate_tree(base_dir, "BigHorn", overlay_scene="BigHornFire", copy_images=True)
+    treegenerator.generate_tree(
+        base_dir, "BigHorn", overlay_scene="BigHornFire", copy_images=True
+    )
     scene_dir_base = Path(base_dir / "Scenes" / "BigHorn")
     scene_dir_overlay = Path(base_dir / "Scenes" / "BigHornFire")
     scene_edit_dir = Path(base_dir / "SceneEdits")
@@ -87,14 +89,22 @@ def test_scene_editor():
 
     # Initialize scene editors
     editor = GoesSceneEditor(str(base_dir), "BigHorn", session_name="BigHorn_Base_Edit")
-    oleditor = GoesSceneEditor(str(base_dir), "BigHornFire", session_name="BigHorn_Fire_Edit")
+    oleditor = GoesSceneEditor(
+        str(base_dir), "BigHornFire", session_name="BigHorn_Fire_Edit"
+    )
     editor.set_font(fontpath=fontpath, fontsize=20, fontcolor=(255, 0, 0))
 
     metadata_base = get_metadata(scene_dir_base)
     metadata_overlay = get_metadata(scene_dir_overlay)
 
-    assert len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png"))) == png_count
-    assert len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif"))) == tiff_count
+    assert (
+        len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png")))
+        == png_count
+    )
+    assert (
+        len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif")))
+        == tiff_count
+    )
 
     # Recrop images
     # original bbox: [-108.09, 43.794, -106.43, 45.25]
@@ -104,10 +114,20 @@ def test_scene_editor():
     if not preview:
         metadata_base = get_metadata(scene_edit_dir_base / "BigHorn_Base_Edit")
         metadata_overlay = get_metadata(scene_edit_dir_overlay / "BigHorn_Fire_Edit")
-        assert len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png"))) == png_count
-        assert len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif"))) == tiff_count
-        assert gistools.check_bbox(new_bbox, check_metadata('bbox', metadata_base)[0], degtol=0.5) == (True, True)
-        assert gistools.check_bbox(new_bbox, check_metadata('bbox', metadata_overlay)[0], degtol=0.5) == (True, True)
+        assert (
+            len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png")))
+            == png_count
+        )
+        assert (
+            len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif")))
+            == tiff_count
+        )
+        assert gistools.check_bbox(
+            new_bbox, check_metadata("bbox", metadata_base)[0], degtol=0.5
+        ) == (True, True)
+        assert gistools.check_bbox(
+            new_bbox, check_metadata("bbox", metadata_overlay)[0], degtol=0.5
+        ) == (True, True)
 
     # Resize images
     # original size: 322 x 207
@@ -117,11 +137,16 @@ def test_scene_editor():
     if not preview:
         metadata_base = get_metadata(scene_edit_dir_base / "BigHorn_Base_Edit")
         metadata_overlay = get_metadata(scene_edit_dir_overlay / "BigHorn_Fire_Edit")
-        assert len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png"))) == png_count
-        assert len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif"))) == tiff_count
-        assert check_metadata('size', metadata_base) == (w, h)
-        assert check_metadata('size', metadata_overlay) == (w, h)
-
+        assert (
+            len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png")))
+            == png_count
+        )
+        assert (
+            len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif")))
+            == tiff_count
+        )
+        assert check_metadata("size", metadata_base) == (w, h)
+        assert check_metadata("size", metadata_overlay) == (w, h)
 
     # Reproject images
     # original projection: Geostationary
@@ -131,46 +156,70 @@ def test_scene_editor():
     if not preview:
         metadata_base = get_metadata(scene_edit_dir_base / "BigHorn_Base_Edit")
         metadata_overlay = get_metadata(scene_edit_dir_overlay / "BigHorn_Fire_Edit")
-        assert len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png"))) == png_count
-        assert len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif"))) == tiff_count
-        assert check_metadata('crs', metadata_base)[0] == crs
-        assert check_metadata('crs', metadata_overlay)[0] == crs
-
+        assert (
+            len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png")))
+            == png_count
+        )
+        assert (
+            len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif")))
+            == tiff_count
+        )
+        assert check_metadata("crs", metadata_base)[0] == crs
+        assert check_metadata("crs", metadata_overlay)[0] == crs
 
     # Add timestamps
-    editor.add_timestamps('upper-left', pytz.timezone('US/Mountain'), 'MDT', preview=preview)
+    editor.add_timestamps(
+        "upper-left", pytz.timezone("US/Mountain"), "MDT", preview=preview
+    )
     if not preview:
-        assert len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png"))) == png_count
-        assert len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif"))) == tiff_count
+        assert (
+            len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png")))
+            == png_count
+        )
+        assert (
+            len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif")))
+            == tiff_count
+        )
 
     # Annotate images
-    editor.add_annotation('text',
-                          ('45d04m17s N', '106d48m40s W'),
-                          label='MT',
-                          labelopts={'fontsize': 20, 'rotation': 0})
-    editor.add_annotation('text',
-                          ('44d57m36s N', '106d48m40s W'),
-                          label='WY',
-                          labelopts={'fontsize': 20, 'rotation': 0})
+    editor.add_annotation(
+        "text",
+        ("45d04m17s N", "106d48m40s W"),
+        label="MT",
+        labelopts={"fontsize": 20, "rotation": 0},
+    )
+    editor.add_annotation(
+        "text",
+        ("44d57m36s N", "106d48m40s W"),
+        label="WY",
+        labelopts={"fontsize": 20, "rotation": 0},
+    )
 
-    circleopts = {'radius': 7,
-                  'fill': (0, 0, 255),
-                  'outline': (0, 0, 0),
-                  'width': 1}
+    circleopts = {"radius": 7, "fill": (0, 0, 255), "outline": (0, 0, 0), "width": 1}
 
-    editor.add_annotation('circle',
-                          ('44d21m56s N', '107d10m28s W'),
-                          label='3504m elev.',
-                          labelopts={'fontsize': 15, 'padding': (15, 15)},
-                          **circleopts)
+    editor.add_annotation(
+        "circle",
+        ("44d21m56s N", "107d10m28s W"),
+        label="3504m elev.",
+        labelopts={"fontsize": 15, "padding": (15, 15)},
+        **circleopts,
+    )
 
     editor.process_annotations(preview=preview)
     if not preview:
-        assert len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png"))) == png_count
-        assert len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif"))) == tiff_count
+        assert (
+            len(list((scene_edit_dir_base / "BigHorn_Base_Edit").glob("*.png")))
+            == png_count
+        )
+        assert (
+            len(list((scene_edit_dir_overlay / "BigHorn_Fire_Edit").glob("*.tif")))
+            == tiff_count
+        )
 
     # Create overlay
-    editor.add_overlay(oleditor, overlay_session_name='Big_Horn_Overlay', preview=preview)
+    editor.add_overlay(
+        oleditor, overlay_session_name="Big_Horn_Overlay", preview=preview
+    )
     overlay_path = base_dir / "SceneEdits" / "BigHorn" / "Big_Horn_Overlay"
     assert len(list(overlay_path.glob("*.png"))) == png_count
     if preview:
@@ -180,8 +229,10 @@ def test_scene_editor():
             time.sleep(0.3)
 
     # Create video
-    neweditor = GoesSceneEditor(str(base_dir), scene_folder='BigHorn', session_name='Big_Horn_Overlay')
-    neweditor.to_video(codec='mpeg4', fps=20)
+    neweditor = GoesSceneEditor(
+        str(base_dir), scene_folder="BigHorn", session_name="Big_Horn_Overlay"
+    )
+    neweditor.to_video(codec="mpeg4", fps=20)
     vid_path = base_dir / "Videos" / "BigHorn" / "Big_Horn_Overlay" / "video.mp4"
     assert os.path.exists(str(vid_path))
 
@@ -191,6 +242,7 @@ def test_scene_editor():
             shutil.rmtree(base_dir)
         except FileNotFoundError:
             pass
+
 
 if __name__ == "__main__":
     sys.exit(pytest.main())

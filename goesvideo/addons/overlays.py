@@ -1,20 +1,19 @@
-import os
-import sys
-import shutil
-from datetime import datetime
-import copy
 import atexit
-from pathlib import Path
+import copy
+import os
+import shutil
+import sys
 import tempfile
+from datetime import datetime
+from pathlib import Path
 
-from PIL import Image
-import cv2
-from colorama import Fore
-from moviepy.editor import ImageSequenceClip
 import numpy as np
 import pytz
+from PIL import Image
+from colorama import Fore
+from matplotlib import colormaps as cm
+from moviepy.editor import ImageSequenceClip
 from tqdm import tqdm
-from matplotlib import cm
 
 from goesvideo.utils import gistools, editortools
 
@@ -30,15 +29,14 @@ frames as required to match the lowest interval.
 
 
 class GenericOverlay:
-
     def __init__(
-        self,
-        baseimgpath,
-        overlaypaths,
-        overlay_timezones=None,
-        base_timezone=None,
-        start_time=None,
-        end_time=None,
+            self,
+            baseimgpath,
+            overlaypaths,
+            overlay_timezones=None,
+            base_timezone=None,
+            start_time=None,
+            end_time=None,
     ):
         """
         @param baseimgpath: (str) path to folder or file to use for base image(s). If a folder is
@@ -85,13 +83,13 @@ class GenericOverlay:
             end_time = "2100-01-01 00:00:00"
 
         # Setup temporary working folders for base and overlay images
-        print(f"{Fore.GREEN} Initalizing working folders...", end="")
+        print(f"{Fore.GREEN}Initalizing working folders...", end="")
         self._setup_working_folders(overlaypaths)
         atexit.register(self.cleanup)
-        print(f"{Fore.GREEN} Done!")
+        print(f"{Fore.GREEN}Done!")
 
         print(
-            f"{Fore.GREEN} Filtering images and copying to working folders...", end=""
+            f"{Fore.GREEN} Filtering images and copying to working folders..."
         )
         # Copy base image files to working folder and filter list of filenames to match start and
         # end times
@@ -99,7 +97,8 @@ class GenericOverlay:
 
         # Copy overlay image files to working folders and filter filename lists to match start and
         # end times
-        self._setup_overlay_imgs(overlaypaths, overlay_timezones, start_time, end_time)
+        self._setup_overlay_imgs(
+            overlaypaths, overlay_timezones, start_time, end_time)
 
         # Match lengths of overlay image arrays to the length of the base array
         self._setup_matched_lists()
@@ -132,21 +131,21 @@ class GenericOverlay:
 
         print()
         print(f"{Fore.GREEN} Initialization Complete!")
-        print()                
-    
+        print()
+
     def create_overlays(
-        self,
-        outpath,
-        out_crs=None,
-        res=None,
-        bbox=None,
-        overlay_opacities=None,
-        overlay_resample=False,
-        base_resample=False,
-        save_overlays_gtiff=None,
-        cumulative=False,
-        cumulative_colormap=None,
-        output_format="simple_image",
+            self,
+            outpath,
+            out_crs=None,
+            res=None,
+            bbox=None,
+            overlay_opacities=None,
+            overlay_resample=False,
+            base_resample=False,
+            save_overlays_gtiff=None,
+            cumulative=False,
+            cumulative_colormap=None,
+            output_format="simple_image",
     ):
         """
 
@@ -203,11 +202,13 @@ class GenericOverlay:
         # images. If not, default to using the maximal common bounds.
         # If bbox parameter is not provided, default to maximal common bounds
         if bbox and self.base_is_geotiff:
-            _base_bbox = gistools.get_bbox_intersection(bbox, self.base_bbox_latlon)
+            _base_bbox = gistools.get_bbox_intersection(
+                bbox, self.base_bbox_latlon)
             _overlay_bbox = []
 
             for overlaybbox in self.overlay_bbox_latlon:
-                _overlay_bbox.append(gistools.get_bbox_intersection(bbox, overlaybbox))
+                _overlay_bbox.append(
+                    gistools.get_bbox_intersection(bbox, overlaybbox))
 
             _bbox_list = [_base_bbox] + _overlay_bbox
             err1 = (
@@ -338,7 +339,6 @@ class GenericOverlay:
         img_arr_last = []
         print(f"{Fore.GREEN} Preparing overlay frames...")
         for i in tqdm(range(0, self.framecount), desc="Frame Number: ", colour="green"):
-
             img_set = []
             img_arr = []
 
@@ -387,9 +387,9 @@ class GenericOverlay:
                 ]
 
             for overlay, file in enumerate(img_set):
-
                 if save_overlays_gtiff:
-                    fname = overlaypaths[overlay] / (svname.split(".")[0] + ".tif")
+                    fname = overlaypaths[overlay] / \
+                        (svname.split(".")[0] + ".tif")
                     shutil.copy(file, fname)
 
                 # Convert overlay geotiffs to images and resize
@@ -438,7 +438,8 @@ class GenericOverlay:
                 if output_format == "simple_image":
                     base_img_copy.save(str(outpath / svname))
                 elif output_format == "geotiff":
-                    fname = gistools.image_to_geotiff(base_img_copy, bbox, out_crs)
+                    fname = gistools.image_to_geotiff(
+                        base_img_copy, bbox, out_crs)
                     shutil.copy(fname, str(outpath / svname))
                     os.remove(fname)
 
@@ -454,12 +455,12 @@ class GenericOverlay:
             shutil.rmtree(str(p))
 
     def _setup_working_folders(self, overlaypaths):
-        self.basetmpdir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.basetmpdir = tempfile.TemporaryDirectory()
         self.basepath = Path(self.basetmpdir.name)
         self.overlaytmpdirs = []
         self.overlaypaths = []
         for p in overlaypaths:
-            _path = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+            _path = tempfile.TemporaryDirectory()
             self.overlaytmpdirs.append(_path)
             self.overlaypaths.append(Path(_path.name))
 
@@ -468,7 +469,8 @@ class GenericOverlay:
         baseimgpath = Path(baseimgpath)
 
         if baseimgpath.is_dir():
-            gtiffs = list(baseimgpath.glob("*.tif")) + list(baseimgpath.glob("*.tiff"))
+            gtiffs = list(baseimgpath.glob("*.tif")) + \
+                list(baseimgpath.glob("*.tiff"))
             gtiffs = sorted(gtiffs, key=lambda item: item.name)
             pngs = list(baseimgpath.glob("*.png"))
             pngs = sorted(pngs, key=lambda item: item.name)
@@ -490,7 +492,8 @@ class GenericOverlay:
             if base_format:
                 self.base_tformat = gistools.time_format_str(base_format)
             else:
-                self.base_tformat = gistools.time_format_str("YYYY-MM-DD hh_mm_ss")
+                self.base_tformat = gistools.time_format_str(
+                    "YYYY-MM-DD hh_mm_ss")
         else:
             self.base_tz = pytz.utc
             self.base_tformat = gistools.time_format_str("YYYY-MM-DD hh_mm_ss")
@@ -627,7 +630,8 @@ class GenericOverlay:
             for tend, tstart in zip(self.overlay_end, self.overlay_start)
         ]
 
-        self.trange_norms = [(np.linspace(1, x, 1) / x) for x in self.overlay_deltas]
+        self.trange_norms = [(np.linspace(1, x, 1) / x)
+                             for x in self.overlay_deltas]
 
         # Calculate interval between images in each overlay path
         overlay_intervals = []
@@ -709,7 +713,8 @@ class GenericOverlay:
                 for i, file in enumerate(self.baseimgfiles):
                     closest_idx = self._get_closest_time(
                         (file.stem, self.base_tformat),
-                        ([x.stem for x in reffiles], self.overlay_tformats[refidx]),
+                        ([x.stem for x in reffiles],
+                         self.overlay_tformats[refidx]),
                         tz=(self.base_tz, self.overlays_tz[refidx]),
                     )
                     new_base_list.append(self.baseimgfiles[closest_idx])
@@ -721,7 +726,8 @@ class GenericOverlay:
             _times = []
             for f in self.baseimgfiles:
                 _times.append(
-                    gistools.get_timestamp(f, self.base_tformat, tz=self.base_tz)
+                    gistools.get_timestamp(
+                        f, self.base_tformat, tz=self.base_tz)
                 )
             _times.sort()
             start = _times[0]
@@ -857,7 +863,6 @@ class GenericOverlay:
 
     @staticmethod
     def _get_closest_time(target, srcarray, tz=None):
-
         if tz:
             targettz = tz[0]
             try:
@@ -872,7 +877,8 @@ class GenericOverlay:
         src_tformat = srcarray[1]
 
         target_time = gistools.get_timestamp(target[0], target[1], targettz)
-        src_times = [gistools.get_timestamp(x, src_tformat, srctz) for x in _srcarray]
+        src_times = [gistools.get_timestamp(
+            x, src_tformat, srctz) for x in _srcarray]
 
         if targettz != srctz:
             target_time = target_time.astimezone(srctz)
@@ -926,15 +932,12 @@ class GenericOverlay:
 
         return left_sep, right_sep
 
-def create_video(vidsavepath,
-                 finaloverlaypath,                 
-                 fps=20,
-                 codec='rawvideo',
-                 **kwargs):
+
+def create_video(vidsavepath, finaloverlaypath, fps=20, codec="rawvideo", **kwargs):
     img_filenames = list(Path(finaloverlaypath).glob("*.png"))
     img_filenames = sorted(img_filenames, key=lambda item: item.name)
 
-    tmpdir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+    tmpdir = tempfile.TemporaryDirectory()
     tmppath = Path(tmpdir.name)
     newfiles = []
 
@@ -942,30 +945,26 @@ def create_video(vidsavepath,
         timestamps = kwargs.get("timestamps", None)
         if timestamps:
             for f in img_filenames:
-                fnew = str(tmppath / (f.stem + '.png'))
+                fnew = str(tmppath / (f.stem + ".png"))
                 newfiles.append(fnew)
-                fmod = f.stem.replace('_', ':')
-                flist = fmod.split(' ')
-                timestamps["label"] = (' ').join(flist[0:2])
+                fmod = f.stem.replace("_", ":")
+                flist = fmod.split(" ")
+                timestamps["label"] = (" ").join(flist[0:2])
                 kwargs["timestamps"] = timestamps
                 img = Image.open(str(f))
                 img = editortools.modify_image(img, **kwargs)
                 if codec == "rawvideo" or codec == "png":
-                    img = Image.fromarray(
-                        cv2.cvtColor(np.asarray(img, dtype=np.uint8), cv2.COLOR_RGB2BGR)
-                    )
+                    img = editortools.convert_color(img)
                 img.save(fnew)
                 img.close()
         else:
             for f in img_filenames:
-                fnew = str(tmppath / (f.stem + '.png'))
+                fnew = str(tmppath / (f.stem + ".png"))
                 newfiles.append(fnew)
                 img = Image.open(str(f))
                 img = editortools.modify_image(img, **kwargs)
                 if codec == "rawvideo" or codec == "png":
-                    img = Image.fromarray(
-                        cv2.cvtColor(np.asarray(img, dtype=np.uint8), cv2.COLOR_RGB2BGR)
-                    )
+                    img = editortools.convert_color(img)
                 img.save(fnew)
                 img.close()
 

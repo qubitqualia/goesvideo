@@ -1,9 +1,6 @@
-import os
 import sys
 import tempfile
 from pathlib import Path
-from importlib.resources import files as importfiles
-import shutil
 
 import pytest
 
@@ -32,7 +29,6 @@ def test_animating():
     exists.append((base_dir / "Videos" / "C02").exists())
 
     assert all(exists)
-
 
     return
 

@@ -1,27 +1,29 @@
-import os
-import sys
 import copy
+import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
-import shutil
 
-import pytz
 import numpy as np
-import geopy.distance
+import pytz
 import rasterio
+import rasterio.crs
 import rasterio.warp as rwarp
 import rasterio.windows as rwindows
+from PIL import Image
 from colorama import Fore
-import rasterio.crs
-from rasterio.transform import from_bounds, rowcol
 from rasterio.coords import BoundingBox
 from rasterio.enums import Resampling
+from rasterio.transform import from_bounds, rowcol
 from shapely.geometry import box
-from PIL import Image
 
+"""
+Functions for manipulating tif and png georeferenced images
+"""
 
 # ------ Coordinate calculations and conversions
+
+
 def convert_dms_to_dd(coords):
     """
     Convert Degrees-Minutes-Seconds coords to decimal degrees
@@ -31,30 +33,28 @@ def convert_dms_to_dd(coords):
     """
     dd_ret_list = []
     for coord in coords:
-        deg = int(coord.split('d')[0])
-        minutes = int((coord.split('d')[1]).split('m')[0])
-        secs = int((coord.split('m')[1]).split('s')[0])
+        deg = int(coord.split("d")[0])
+        minutes = int((coord.split("d")[1]).split("m")[0])
+        secs = int((coord.split("m")[1]).split("s")[0])
         direction = coord[-1]
-        dd = deg + (minutes/60.0) + (secs/3600)
-        if direction == 'W' or direction == 'S':
+        dd = deg + (minutes / 60.0) + (secs / 3600)
+        if direction == "W" or direction == "S":
             dd = -dd
         dd_ret_list.append(dd)
-    
+
     dd_ret = tuple(dd_ret_list)
-    
+
     return dd_ret
+
 
 def convert_point(point, point_crs, geodata=None):
     geodata_copy = copy.deepcopy(geodata)
-    bbox = geodata_copy['bbox']
-    dst_crs = geodata_copy['crs']
-    width = geodata_copy['raster_profile']['width']
-    height = geodata_copy['raster_profile']['height']
+    dst_crs = geodata_copy["crs"]
 
     pointx, pointy = rwarp.transform(point_crs, dst_crs, [point[1]], [point[0]])
-    
+
     return pointy[0], pointx[0]
-    
+
 
 def xy_from_latlon(point, geodata=None):
     """
@@ -67,34 +67,35 @@ def xy_from_latlon(point, geodata=None):
     :return: (tup) x,y pixel coords
     """
     geodata_copy = copy.deepcopy(geodata)
-    bbox = geodata_copy['bbox']
-    crs = geodata_copy['crs']
-    width = geodata_copy['raster_profile']['width']
-    height = geodata_copy['raster_profile']['height']
-    
+    crs = geodata_copy["crs"]
+
     # Convert point from EPSG:4326 to crs
-    _transform = rasterio.Affine(*geodata_copy['transform'])
-    #_transform = from_bounds(*bbox, width, height)
-    pointx, pointy = rwarp.transform(rasterio.CRS.from_epsg(4326), crs, [point[1]], [point[0]])
-    
+    _transform = rasterio.Affine(*geodata_copy["transform"])
+    # _transform = from_bounds(*bbox, width, height)
+    pointx, pointy = rwarp.transform(
+        rasterio.CRS.from_epsg(4326), crs, [point[1]], [point[0]]
+    )
+
     # Get pixel coordinates
-    x, y = rowcol(_transform, [pointx[0]], [pointy[0]])        
-       
+    x, y = rowcol(_transform, [pointx[0]], [pointy[0]])
+
     return int(y), int(x)
+
 
 def get_crs(srctif):
     with rasterio.open(srctif, "r") as ds:
         crs = ds.crs
     return crs
 
+
 def get_resolution(srctif):
-    
-    with rasterio.open(srctif, 'r') as ds:
+    with rasterio.open(srctif, "r") as ds:
         _transform = ds.transform
         res_x = _transform[0]
         res_y = -_transform[4]
 
     return res_x, res_y
+
 
 def transform_bbox(bbox, src_crs, dst_crs):
     """
@@ -115,6 +116,7 @@ def transform_bbox(bbox, src_crs, dst_crs):
     bbox = [x0t[0], y0t[0], x1t[0], y1t[0]]
 
     return bbox
+
 
 def get_max_bbox(base_bbox, overlaybbox):
     """
@@ -144,6 +146,7 @@ def get_max_bbox(base_bbox, overlaybbox):
     ret = BoundingBox(*maxbbox)
     return ret
 
+
 def get_bbox_intersection(user_bbox, img_bbox):
     """
     Returns the intersection of bbox areas
@@ -172,6 +175,7 @@ def get_bbox_intersection(user_bbox, img_bbox):
 
     return ret
 
+
 def check_bbox(requested, actual, degtol=0, strict=False):
     """
     Check the user-requested bbox is valid. Assumes EPSG:4326 coordinates.
@@ -187,10 +191,15 @@ def check_bbox(requested, actual, degtol=0, strict=False):
     south_ok = False
     east_ok = False
     north_ok = False
-    
-    requested = [requested[0]+180, requested[1]+90, requested[2]+180, requested[3]+90]
-    actual = [actual[0]+180, actual[1]+90, actual[2]+180, actual[3]+90]
-    
+
+    requested = [
+        requested[0] + 180,
+        requested[1] + 90,
+        requested[2] + 180,
+        requested[3] + 90,
+    ]
+    actual = [actual[0] + 180, actual[1] + 90, actual[2] + 180, actual[3] + 90]
+
     if not strict:
         if (actual[0] - degtol) <= requested[0] <= (actual[0] + degtol):
             west_ok = True
@@ -209,13 +218,14 @@ def check_bbox(requested, actual, degtol=0, strict=False):
             east_ok = True
         if actual[3] >= requested[3]:
             north_ok = True
-      
+
     if west_ok and east_ok:
         lon_ok = True
     if south_ok and north_ok:
-        lat_ok = True  
+        lat_ok = True
 
     return lat_ok, lon_ok
+
 
 # ------ Image operations
 def image_to_geotiff(img, geodata, outfile=None):
@@ -238,7 +248,7 @@ def image_to_geotiff(img, geodata, outfile=None):
         _path = None
     else:
         _path = str(img)
-    
+
     geodata_copy = copy.deepcopy(geodata)
 
     if _path:
@@ -253,14 +263,14 @@ def image_to_geotiff(img, geodata, outfile=None):
     b = imgarr[:, :, 2]
 
     # Create new raster
-    profile = geodata_copy['raster_profile']
-    width = profile['width']
-    height = profile['height']
-    dtype = profile['dtype']
-    if not geodata_copy['transform']:
-        _transform = from_bounds(*geodata_copy['bbox'], width, height)
+    profile = geodata_copy["raster_profile"]
+    width = profile["width"]
+    height = profile["height"]
+    dtype = profile["dtype"]
+    if not geodata_copy["transform"]:
+        _transform = from_bounds(*geodata_copy["bbox"], width, height)
     else:
-        _transform = rasterio.Affine(*geodata_copy['transform'])
+        _transform = rasterio.Affine(*geodata_copy["transform"])
 
     if pngimg.mode == "RGB":
         count = 3
@@ -271,17 +281,21 @@ def image_to_geotiff(img, geodata, outfile=None):
         imgbands = [r, g, b, a]
 
     kwargs = {}
-    kwargs.update({"transform": _transform,
-                    "width": width,
-                    "height": height,
-                    "crs": geodata_copy["crs"],
-                    "bounds": geodata_copy["bbox"],
-                    "count": count,
-                    "dtype": dtype})
+    kwargs.update(
+        {
+            "transform": _transform,
+            "width": width,
+            "height": height,
+            "crs": geodata_copy["crs"],
+            "bounds": geodata_copy["bbox"],
+            "count": count,
+            "dtype": dtype,
+        }
+    )
 
-    tmp_file = tempfile.NamedTemporaryFile(mode="w+b", delete=False, delete_on_close=False, suffix='.tif')
+    tmp_file = tempfile.NamedTemporaryFile(mode="w+b", delete=False, suffix=".tif")
     _file = tmp_file.name
-    
+
     with rasterio.open(_file, "w", **kwargs) as dst:
         for band, src in enumerate(imgbands, start=1):
             dst.write_band(band, src)
@@ -291,7 +305,8 @@ def image_to_geotiff(img, geodata, outfile=None):
         return outfile
     else:
         return _file
-    
+
+
 def geotiff_to_image(srctif, outfile=None):
     """
     Convert a geotiff to a simple image
@@ -308,7 +323,7 @@ def geotiff_to_image(srctif, outfile=None):
     )
     crs = get_crs(srctif)
 
-    tmpfile = tempfile.NamedTemporaryFile("w+b", suffix=".png", delete=False, delete_on_close=False)
+    tmpfile = tempfile.NamedTemporaryFile("w+b", suffix=".png", delete=False)
     _file = tmpfile.name
 
     with rasterio.open(
@@ -334,19 +349,24 @@ def geotiff_to_image(srctif, outfile=None):
 
     return img
 
+
 def update_geodata(srctif, geodata):
-    with rasterio.open(srctif, 'r') as ds:
+    with rasterio.open(srctif, "r") as ds:
         profile = ds.profile
-        crs = profile.pop('crs', None)
-        _t = profile.pop('transform', None)
-        geodata.update({'raster_profile': profile.data,
-                        'crs': crs.wkt,
-                        'transform': [_t.a, _t.b, _t.c, _t.d, _t.e, _t.f],
-                        'bbox': ds.bounds,
-                        'res_x': ds.res[0],
-                        'res_y': ds.res[1]})
-        
-        
+        crs = profile.pop("crs", None)
+        _t = profile.pop("transform", None)
+        geodata.update(
+            {
+                "raster_profile": profile.data,
+                "crs": crs.wkt,
+                "transform": [_t.a, _t.b, _t.c, _t.d, _t.e, _t.f],
+                "bbox": ds.bounds,
+                "res_x": ds.res[0],
+                "res_y": ds.res[1],
+            }
+        )
+
+
 def resize(srcpath, width, height, geodata=None, resample=None, outfile=None):
     """
     Resize geotiff
@@ -367,14 +387,14 @@ def resize(srcpath, width, height, geodata=None, resample=None, outfile=None):
     if isinstance(srcpath, str):
         _path = srcpath
     else:
-        _path = str(srcpath)    
+        _path = str(srcpath)
 
     # Determine suffix of srcpath
-    if _path.split('.')[-1] == 'png':
+    if _path.split(".")[-1] == "png":
         is_gtiff = False
         converted = False
         geodata_copy = copy.deepcopy(geodata)
-        profile_out = geodata_copy['raster_profile']
+        profile_out = geodata_copy["raster_profile"]
     else:
         is_gtiff = True
         converted = False
@@ -383,45 +403,61 @@ def resize(srcpath, width, height, geodata=None, resample=None, outfile=None):
         resample = Resampling.nearest
 
     # Create tempfiles for writing
-    tmpfile = tempfile.NamedTemporaryFile("w+b", suffix='.tif', delete=False, delete_on_close=False)
+    tmpfile = tempfile.NamedTemporaryFile("w+b", suffix=".tif", delete=False)
     _file = tmpfile.name
 
-    tmpfile2 = tempfile.NamedTemporaryFile("w+b", suffix='.tif', delete=False, delete_on_close=False)
+    tmpfile2 = tempfile.NamedTemporaryFile("w+b", suffix=".tif", delete=False)
     _file2 = tmpfile2.name
 
     while True:
         if is_gtiff or converted:
-
-            with rasterio.open(_path, 'r') as ds:
-                data = ds.read(out_shape=(ds.count, int(height), int(width)), resampling=resample)
-                _transform = ds.transform * ds.transform.scale((ds.width / data.shape[-1]), (ds.height / data.shape[-2]))
+            with rasterio.open(_path, "r") as ds:
+                data = ds.read(
+                    out_shape=(ds.count, int(height), int(width)), resampling=resample
+                )
+                _transform = ds.transform * ds.transform.scale(
+                    (ds.width / data.shape[-1]), (ds.height / data.shape[-2])
+                )
                 profile = ds.profile
-                
+
                 if not is_gtiff:
                     profile = profile | profile_out
-                    profile_out.update({'height': height, 'width': width})
-                
-                profile.update({'count': ds.count,
-                                'height': height,
-                                'width': width,
-                                'transform': _transform})
-                             
+                    profile_out.update({"height": height, "width": width})
 
-                with rasterio.open(_file2, 'w', **profile) as dst:
+                profile.update(
+                    {
+                        "count": ds.count,
+                        "height": height,
+                        "width": width,
+                        "transform": _transform,
+                    }
+                )
+
+                with rasterio.open(_file2, "w", **profile) as dst:
                     dst.write(data)
-                
+
             if not is_gtiff:
                 res_x, res_y = get_resolution(_file2)
-                geodata_copy.update({'res_x': res_x, 'res_y': res_y})
-                geodata_copy.update({'transform': [_transform.a, _transform.b, _transform.c,
-                                              _transform.d, _transform.e, _transform.f]})
-            
+                geodata_copy.update({"res_x": res_x, "res_y": res_y})
+                geodata_copy.update(
+                    {
+                        "transform": [
+                            _transform.a,
+                            _transform.b,
+                            _transform.c,
+                            _transform.d,
+                            _transform.e,
+                            _transform.f,
+                        ]
+                    }
+                )
+
             os.unlink(_file)
             break
         else:
             _path = image_to_geotiff(_path, geodata_copy)
             converted = True
-            
+
     if not is_gtiff:
         if outfile:
             geotiff_to_image(_file2, outfile)
@@ -429,7 +465,9 @@ def resize(srcpath, width, height, geodata=None, resample=None, outfile=None):
             os.unlink(_path)
             retpath = outfile
         else:
-            outfilepath = tempfile.NamedTemporaryFile("w+b", suffix='.png', delete=False, delete_on_close=False)
+            outfilepath = tempfile.NamedTemporaryFile(
+                "w+b", suffix=".png", delete=False
+            )
             retpath = outfilepath.name
             geotiff_to_image(_file2, retpath)
             os.unlink(_file2)
@@ -456,9 +494,9 @@ def get_shape(srcpath, geodata=None):
     if isinstance(srcpath, str):
         _path = srcpath
     else:
-        _path = str(srcpath)    
+        _path = str(srcpath)
 
-    if srcpath.split('.')[-1] == 'png':
+    if srcpath.split(".")[-1] == "png":
         is_gtiff = False
         converted = False
         geodata_copy = copy.deepcopy(geodata)
@@ -478,6 +516,7 @@ def get_shape(srcpath, geodata=None):
 
     return w, h
 
+
 def reproject(srcpath, out_crs="EPSG:4326", geodata=None, outfile=None):
     """
     Reproject a geotiff or png to specified CRS.
@@ -494,24 +533,23 @@ def reproject(srcpath, out_crs="EPSG:4326", geodata=None, outfile=None):
     if isinstance(srcpath, str):
         _path = srcpath
     else:
-        _path = str(srcpath)    
-    
-    if _path.split('.')[-1] == 'png':        
+        _path = str(srcpath)
+
+    if _path.split(".")[-1] == "png":
         is_gtiff = False
         converted = False
         geodata_copy = copy.deepcopy(geodata)
-        profile_out = geodata_copy['raster_profile']        
-    else:        
+        profile_out = geodata_copy["raster_profile"]
+    else:
         is_gtiff = True
         converted = False
 
-    tmpgtifffile = tempfile.NamedTemporaryFile("w+b", suffix='.tif', delete=False, delete_on_close=False)
+    tmpgtifffile = tempfile.NamedTemporaryFile("w+b", suffix=".tif", delete=False)
     gtiff_file = tmpgtifffile.name
 
     while True:
         if is_gtiff or converted:
             with rasterio.open(_path) as src:
-
                 if isinstance(out_crs, str):
                     out_crs = rasterio.CRS.from_string(out_crs)
                 else:
@@ -520,40 +558,53 @@ def reproject(srcpath, out_crs="EPSG:4326", geodata=None, outfile=None):
                 _transform, width, height = rwarp.calculate_default_transform(
                     src.crs, out_crs, src.width, src.height, *src.bounds
                 )
-                                
+
                 if not is_gtiff:
-                    bbox_out = transform_bbox(geodata_copy['bbox'], geodata_copy['crs'], out_crs)
-                    #old_width = geodata_copy['raster_profile']['width']
-                    #old_height = geodata_copy['raster_profile']['height']
-                    #if old_width != width or old_height != height:
+                    bbox_out = transform_bbox(
+                        geodata_copy["bbox"], geodata_copy["crs"], out_crs
+                    )
+                    # old_width = geodata_copy['raster_profile']['width']
+                    # old_height = geodata_copy['raster_profile']['height']
+                    # if old_width != width or old_height != height:
                     #    src2_path, _ = resize(_path, old_width, old_height, geodata=geodata_copy)
-                    #else:
+                    # else:
                     #    src2_path = None
                 else:
                     bbox_out = transform_bbox(src.bounds, src.crs, out_crs)
-                    #if width != src.width or height != src.height:
+                    # if width != src.width or height != src.height:
                     #    src2_path, _ = resize(_path, src.width, src.height)
-                    #else:
+                    # else:
                     #    src2_path = None
 
                 profile = src.profile
 
                 if not is_gtiff:
-                    geodata_copy.update({'crs': out_crs, 
-                                         'bbox': bbox_out,
-                                         'transform': [_transform.a, _transform.b, _transform.c, 
-                                                       _transform.d, _transform.e, _transform.f]})
-                    profile_out.update(
-                        {"width": width,
-                         "height": height}
+                    geodata_copy.update(
+                        {
+                            "crs": out_crs,
+                            "bbox": bbox_out,
+                            "transform": [
+                                _transform.a,
+                                _transform.b,
+                                _transform.c,
+                                _transform.d,
+                                _transform.e,
+                                _transform.f,
+                            ],
+                        }
                     )
-                
-                profile.update({'transform': _transform})
-                profile.update({'crs': out_crs,
-                                'bounds': bbox_out,
-                                'count': src.count,
-                                'width': width,
-                                'height': height})
+                    profile_out.update({"width": width, "height": height})
+
+                profile.update({"transform": _transform})
+                profile.update(
+                    {
+                        "crs": out_crs,
+                        "bounds": bbox_out,
+                        "count": src.count,
+                        "width": width,
+                        "height": height,
+                    }
+                )
 
                 src2_path = gtiff_file
 
@@ -568,10 +619,10 @@ def reproject(srcpath, out_crs="EPSG:4326", geodata=None, outfile=None):
                             dst_crs=out_crs,
                             resampling=Resampling.nearest,
                         )
-                    
+
                 if not is_gtiff:
                     res_x, res_y = get_resolution(src2_path)
-                    geodata_copy.update({'res_x': res_x, 'res_y': res_y})
+                    geodata_copy.update({"res_x": res_x, "res_y": res_y})
             break
         else:
             _path = image_to_geotiff(_path, geodata_copy)
@@ -584,7 +635,7 @@ def reproject(srcpath, out_crs="EPSG:4326", geodata=None, outfile=None):
             retpath = outfile
         else:
             img = geotiff_to_image(src2_path)
-            tmpimgfile = tempfile.NamedTemporaryFile("w+b", suffix='.png', delete=False, delete_on_close=False)
+            tmpimgfile = tempfile.NamedTemporaryFile("w+b", suffix=".png", delete=False)
             imgfile = tmpimgfile.name
             img.save(imgfile)
             img.close()
@@ -596,14 +647,15 @@ def reproject(srcpath, out_crs="EPSG:4326", geodata=None, outfile=None):
             retpath = outfile
         else:
             retpath = src2_path
-    
+
     if converted:
         os.unlink(_path)
-      
+
     if not is_gtiff:
         return retpath, geodata_copy
     else:
-        return retpath, None    
+        return retpath, None
+
 
 def get_bounds(srcpath):
     """
@@ -620,6 +672,7 @@ def get_bounds(srcpath):
         bounds = src.bounds
 
     return bounds
+
 
 def crop(srcpath, new_bbox, geodata=None, outfile=None):
     """
@@ -638,53 +691,66 @@ def crop(srcpath, new_bbox, geodata=None, outfile=None):
         _path = srcpath
     else:
         _path = str(srcpath)
-        
-    if _path.split('.')[-1] == 'png':        
+
+    if _path.split(".")[-1] == "png":
         is_gtiff = False
         converted = False
         geodata_copy = copy.deepcopy(geodata)
-        profile_out = geodata_copy['raster_profile']        
-    else:        
+        profile_out = geodata_copy["raster_profile"]
+    else:
         is_gtiff = True
         converted = False
 
-    tmpfile = tempfile.NamedTemporaryFile("w+b", suffix='.tif', delete=False, delete_on_close=False)
+    tmpfile = tempfile.NamedTemporaryFile("w+b", suffix=".tif", delete=False)
     gtiff_file = tmpfile.name
-    
+
     # Need to transform bbox if crs is not EPSG:4326
     if not is_gtiff:
-        if geodata_copy['crs'] != "EPSG:4326":
-            new_bbox = transform_bbox(new_bbox, "EPSG:4326", geodata_copy['crs'])
+        if geodata_copy["crs"] != "EPSG:4326":
+            new_bbox = transform_bbox(new_bbox, "EPSG:4326", geodata_copy["crs"])
     else:
-        with rasterio.open(_path, 'r') as ds:
+        with rasterio.open(_path, "r") as ds:
             crs = ds.crs
         if crs != "EPSG:4326":
             new_bbox = transform_bbox(new_bbox, "EPSG:4326", crs)
-    
+
     while True:
         if is_gtiff or converted:
-            with rasterio.open(_path, 'r') as src:
+            with rasterio.open(_path, "r") as src:
                 bands = len(src.indexes)
-                cropped = src.read(bands, window=rwindows.from_bounds(*new_bbox, src.transform))
+                cropped = src.read(
+                    bands, window=rwindows.from_bounds(*new_bbox, src.transform)
+                )
 
                 profile = src.profile
 
                 if not is_gtiff:
-                    profile = profile | profile_out                    
-                    profile_out.update({'height': cropped.shape[0],
-                                        'width': cropped.shape[1]})
+                    profile = profile | profile_out
+                    profile_out.update(
+                        {"height": cropped.shape[0], "width": cropped.shape[1]}
+                    )
 
-                profile.update({'bounds': new_bbox,
-                                'height': cropped.shape[0],
-                                'width': cropped.shape[1]})
-                
+                profile.update(
+                    {
+                        "bounds": new_bbox,
+                        "height": cropped.shape[0],
+                        "width": cropped.shape[1],
+                    }
+                )
+
                 with rasterio.open(gtiff_file, "w", **profile) as dst:
-                    for band in range(1, bands+1):
-                        dst.write_band(band, src.read(band, window=rwindows.from_bounds(*new_bbox, src.transform)))
-            
+                    for band in range(1, bands + 1):
+                        dst.write_band(
+                            band,
+                            src.read(
+                                band,
+                                window=rwindows.from_bounds(*new_bbox, src.transform),
+                            ),
+                        )
+
             if not is_gtiff:
                 res_x, res_y = get_resolution(gtiff_file)
-                geodata_copy.update({'bbox': new_bbox, 'res_x': res_x, 'res_y': res_y})        
+                geodata_copy.update({"bbox": new_bbox, "res_x": res_x, "res_y": res_y})
             break
         else:
             _path = image_to_geotiff(_path, geodata_copy)
@@ -697,7 +763,7 @@ def crop(srcpath, new_bbox, geodata=None, outfile=None):
             retpath = outfile
         else:
             img = geotiff_to_image(gtiff_file)
-            tmpimgfile = tempfile.NamedTemporaryFile("w+b", suffix='.png', delete=False, delete_on_close=False)
+            tmpimgfile = tempfile.NamedTemporaryFile("w+b", suffix=".png", delete=False)
             imgfile = tmpimgfile.name
             img.save(imgfile)
             img.close()
@@ -709,14 +775,15 @@ def crop(srcpath, new_bbox, geodata=None, outfile=None):
             retpath = outfile
         else:
             retpath = gtiff_file
-    
+
     if converted:
         os.unlink(_path)
-    
+
     if not is_gtiff:
         return retpath, geodata_copy
     else:
-        return retpath, None    
+        return retpath, None
+
 
 def adjust_alpha(srcpath, alpha, outfile=None):
     """
@@ -724,26 +791,26 @@ def adjust_alpha(srcpath, alpha, outfile=None):
     @param srcpath: (str) or (Path) path to png or geotiff input image
     @param alpha: (float) desired alpha value
     @param outfile: (str)
-    @return: (str) path to modified file in png format 
+    @return: (str) path to modified file in png format
     """
     if isinstance(srcpath, str):
         _path = srcpath
     else:
         _path = str(srcpath)
-      
-    if _path.split('.')[-1] == 'png':
+
+    if _path.split(".")[-1] == "png":
         is_gtiff = False
         converted = False
         img = Image.open(_path)
     else:
         is_gtiff = True
         converted = False
-    
-    tmpfile = tempfile.NamedTemporaryFile("w+b", suffix='.png', delete=False, delete_on_close=False)
+
+    tmpfile = tempfile.NamedTemporaryFile("w+b", suffix=".png", delete=False)
     png_file = tmpfile.name
-    
+
     while True:
-        if not is_gtiff or converted:        
+        if not is_gtiff or converted:
             imgarr = np.array(img, dtype=np.uint8)
             np.place(imgarr[:, :, 3], imgarr[:, :, 3] > 0, int(alpha * 255))
             retimg = Image.fromarray(imgarr, "RGBA")
@@ -751,17 +818,18 @@ def adjust_alpha(srcpath, alpha, outfile=None):
             retimg.close()
             break
         else:
-            img = geotiff_to_image(_path)            
+            img = geotiff_to_image(_path)
             converted = True
-    
+
     if outfile:
         os.rename(png_file, outfile)
         os.unlink(png_file)
         retpath = outfile
-    else:            
-        retpath = png_file    
-        
+    else:
+        retpath = png_file
+
     return retpath
+
 
 def trim_img_border(img):
     """
@@ -812,6 +880,7 @@ def trim_img_border(img):
     retimg = Image.fromarray(newarr, "RGB")
     return retimg
 
+
 # ------ Misc functions
 def get_timestamp(file, tformatdict, tz=pytz.utc):
     """
@@ -855,6 +924,7 @@ def get_timestamp(file, tformatdict, tz=pytz.utc):
 
     return t
 
+
 def time_format_str(instr):
     """
     Generates time format dictionary to be used for parsing image filenames
@@ -893,6 +963,7 @@ def time_format_str(instr):
 
     return retdict
 
+
 def replace_file_timezone(file, in_tz, out_tz, out_abbr):
     """
     Renames a file to match desired timezone
@@ -916,10 +987,14 @@ def replace_file_timezone(file, in_tz, out_tz, out_abbr):
         return
 
     if not isinstance(in_tz, pytz.BaseTzInfo):
-        print(f"{Fore.RED}WARNING - Timezone must be provided as a pytz timezone object.")
+        print(
+            f"{Fore.RED}WARNING - Timezone must be provided as a pytz timezone object."
+        )
         return
     if not isinstance(out_tz, pytz.BaseTzInfo):
-        print(f"{Fore.RED}WARNING - Timezone must be provided as a pytz timezone object.")
+        print(
+            f"{Fore.RED}WARNING - Timezone must be provided as a pytz timezone object."
+        )
         return
 
     _s1 = tstr.split(" ")[0]
@@ -945,8 +1020,3 @@ def replace_file_timezone(file, in_tz, out_tz, out_abbr):
 
     os.rename(file, fname)
     return
-
-
-
-
-
