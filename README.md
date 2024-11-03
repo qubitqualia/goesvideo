@@ -1,142 +1,152 @@
+![PyPI - Version](https://img.shields.io/pypi/v/goesvideo)   
+![PyPI - Downloads](https://img.shields.io/pypi/dm/goesvideo) 
+![GitHub License](https://img.shields.io/github/license/qubitqualia/goesvideo)
+![GitHub repo size](https://img.shields.io/github/repo-size/qubitqualia/goesvideo)
+
+
 # GoesVideo
 ___
-This package is a [Satpy](https://github.com/pytroll/satpy) wrapper that facilitates and streamlines the 
-downloading, compositing and animating of imagery from the GOES-East
-and GOES-West satellites. Basic annotation tools are also
-included to simplify the preparation of images and videos for presentations.
-
-Note, that the current version has only been tested using Level 2 CMI data. Results may
-be unexpected with other GOES products.
-
-**New in version 2024.1.0**: Overlays can now be generated using a base image set (e.g. GOES-18 visible imagery)
-and one or more overlay sets (e.g. fire detection). This tool is general in scope and does not require GOES data
-products in order to work. 
+This package is a convenience wrapper for [Satpy](https://github.com/pytroll/satpy) to facilitate quick and simple 
+creation of animated scenes from the GOES geostationary satellites. It handles downloading, compositing and animating of
+GOES imagery. Also, editing tools are provided to perform georeferenced manipulations and annotations of animated scenes. 
 
 ## Installation
 ___
-
-GoesVideo can be installed from PyPI with pip:
+GoesVideo can be installed from PyPi using pip:
 
 ```python
 pip install goesvideo
 ```
 
-## Usage
+## Example Usage
 ___
-There are three main classes that can be invoked depending on the needs
-of the user. To download GOES data files from [AWS](https://registry.opendata.aws/noaa-goes/), use the
-`GoesDownloader` class:
+To highlight the capabilities of GoesVideo, we will look at some GOES-East imagery near 
+Big Horn, WY during the time period of early October 2024 when 
+several large wildfires erupted. 
+
+First, we define the bounding box coordinates for the area of 
+interest in the order of (west, south, east, north):
 
 ```python
-import goesvideo
-
-dl = goesvideo.GoesDownloader('goes-east', 'full', 'ABI-L2-CMIP', base_dir=mypath)
-dl.download_all('2023-05-01 10:30:00', '2023-05-10 12:17:00', interval=1440)
+bbox = (-108.09, 43.794, -106.43, 45.25)
 ```
-This example will download all full-disk images from the GOES-East product ABI-L2-CMIP between
-May 5th and May 10th, 2023 at an interval of 1440 minutes.
-
-Compositing of imagery to produce Satpy scenes can be accomplished using the `GoesCompositor` class:
+Next, we can easily create composite images and video of this area in the 
+time frame of interest:
 
 ```python
-import goesvideo
+from goesvideo import GoesAnimator
+from pathlib import Path
 
-compositor = goesvideo.GoesCompositor('goes-west', 'conus', 'ABI-L2-CMIP', base_dir=mypath)
-compositor.create_composites('true_color', '2023-05-01 10:30:00', '2023-05-10', interval=30)
-compositor.create_composites('color_infrared', '2023-07-01 08:00:00', '2023-07-03 13:00:00', 
-                             interval=180,
-                             bbox=(-117.3, 30.1, -93.0, 43.5),
-                             coastlines=True,
-                             resampling=('finest', 'native'),
-                             folder_name='July-cropped')
+basedir = str(Path.home()) + '/goesimagery'
+am = GoesAnimator('goes-east', 'conus', 'ABI-L2-CMIP', base_dir=basedir)
+# Adding coastlines requires shapefile path to be specified
+# Shapefiles can be downloaded here: https://www.soest.hawaii.edu/pwessel/gshhg/
+coastopts = {'level_coast': 1, 'level_borders': 2}
+am.compositor.set_coastlines_options(path=coastpath, **coastopts)
+am.create_video('true_color_with_night_ir_custom',
+                start_time='2024-10-08 12:00:00',
+                end_time='2024-10-11 05:00:00',
+                folder_name='Big_Horn_WY',
+                bbox=bbox,
+                interval=1,
+                coastlines=True,
+                res='auto',
+                codec='rawvideo',
+                fps=20
+                )
 ```
-The compositor will invoke the downloader as needed to retrieve the remote datasets necessary to produce the desired
-Satpy scene. For the ABI instrument, Satpy includes a configuration file named `abi.yaml` that defines all of the 
-available scenes. Note that the `goesvideo` package also has a configuration file
-`abibands.yaml` that is intended to mirror the band requirements in the Satpy file. It is advisable to update
-this file anytime updates are made to the Satpy file.
+That's all there is to it! Here's a screenshot of one of the composited images:
 
-Videos can be produced using the `GoesAnimator` class:
+![title](screenshot1.png)
+
+Now, let's add some annotations to the image frames in our video:
 
 ```python
-import goesvideo
+from goesvideo.addons.sceneeditor import GoesSceneEditor
 
-animator = goesvideo.GoesAnimator('goes-west', 'conus', 'ABI-L2-CMIP', base_dir=mypath)
-animator.create_video('true_color', start_time='2023-07-10 12:34:00',
-                      end_time='2023-07-13 10:10:00',
-                      interval=15,
-                      timestamps=True,
-                      coastlines=True,
-                      res=(1920, 1080),
-                      fps=20)
-animator.create_video('C01', start_time='2023-07-10 12:34:00',
-                      end_time='2023-07-13 10:10:00',
-                      interval=15,
-                      cmap='Spectral')
-animator.create_video('color_infrared', from_existing_imgs=True)
+editor = GoesSceneEditor(basedir, 'Big_Horn_WY', session_name='Big_Horn_WY_edit1')
+# fontpath should be path to a ttf font
+editor.set_font(fontpath, (255, 0, 0), 20)
+
+# Add timestamp to each video frame
+editor.add_timestamps('upper-left', pytz.timezone('US/Mountain'), preview=False)
+
+# Add circle at specified lat/lon position
+circleopts = {"radius": 7, "fill": (0, 0, 255), "outline": (0, 0, 0), "width": 1}
+editor.add_annotation(
+    "circle",
+    ("44d21m56s N", "107d10m28s W"),
+    label="3504m elev.",
+    labelopts={"fontsize": 15, "padding": (15, 15)},
+    **circleopts,
+)
+editor.process_annotations(preview=False)
+editor.to_video(codec='rawvideo', fps=20)
 ```
-The animator will invoke the compositor and downloader as necessary to produce the desired video.
-In the last example, the animator will search for matching composites that
-have previously been generated and saved in the base directory.
+The `GoesSceneEditor` copies over the composited images from the `Big_Horn_WY` folder to a designated session folder where
+annotations can be applied. After all of the images have been
+edited, a new output video is created. Here is a screenshot:
 
-Since compositing and animating GOES imagery can be a lengthy process, a preview function has been provided to ensure the
-video will turn out as expected:
+![title](screenshot2.png)
+
+If desired, further modifications can be made by `GoesSceneEditor` including recropping to new boundary coordinates, resizing and 
+reprojection in a different CRS.
 
 ```python
-import goesvideo
-
-animator = goesvideo.GoesAnimator('goes-west', 'conus', 'ABI-L2-CMIP', base_dir=mypath)
-animator.preview('true_color', use_cached=True, **kwargs)
+editor.recrop((-107, 44, -106.9, 44), preview=False)
+editor.resize(1024, 768, preview=False)
+editor.reproject("EPSG:4326", preview=False)
 ```
-In this example, a preview will be generated for the true color composite. The kwargs can contain any of the compositor 
-keywords and/or annotation-related keywords such as `text`, `circle` and `arrow`.
+Finally, `GoesSceneEditor` can produce overlay videos using images from another editor instance. This can be useful when 
+visualizing hot spots detected by the FDC product available from the GOES 
+ABI. 
 
-If desired, output videos can be annotated post-production using the experimental
-`GoesClip` class. 
+```python
+fdc_comp = GoesCompositor('goes-east', 'conus', 'ABI-L2-FDC', base_dir=basedir)
+fdc_comp.create_composites('Power',
+                           start_time='2024-10-08 12:00:00',
+                           end_time='2024-10-11 05:00:00',
+                           folder_name='Big_Horn_WY_Fire_Detection',
+                           bbox=bbox,
+                           output_format='geotiff'
+                           )
+oleditor = GoesSceneEditor(basedir, 'Big_Horn_WY_Fire_Detection', session_name='Big_Horn_WY_Fire_Edit_1')
+editor.add_overlay(oleditor, opacity=0.8, cumulative=True, overlay_session_name='Big_Horn_Overlay')
+editor.to_video(codec='rawvideo', fps=20)
+```
+The output video shows the fire detection overlay as red pixels. The `cumulative` option forces a hotspot to remain in the 
+video after its first appearance.
 
+![title](screenshot3.png)
 
-Finally, a note on folder structure. The `base_dir` is either set by the user or defaults to the current working directory.
-The folder is then automatically setup as follows:
+Finally, a note about the folder structure used by GoesVideo. There are four primary folders that are generated by the 
+package under the user-provided basedir: `goesdata` for storage of downloaded nc files, `Scenes` to store images composited
+by `GoesCompositor` and `GoesAnimator`, `SceneEdits` to store edit sessions produced by `GoesSceneEditor` and `Videos` to
+store output videos. For the specific example described above, the tree ends up looking something like this:
+```bash
+.
+├── goesdata                            [nc files]
+├── SceneEdits                          [Image edits by GoesSceneEditor]
+│   ├── Big_Horn_WY                     
+│   │   ├── Big_Horn_Overlay           
+│   │   └── Big_Horn_WY_edit1           
+│   └── Big_Horn_WY_Fire_Detection      
+│       └── Big_Horn_WY_Fire_Edit_1     
+├── Scenes                              [Scenes composited by GoesCompositor or GoesAnimator]    
+│   ├── Big_Horn_WY                     
+│   └── Big_Horn_WY_Fire_Detection
+└── Videos                              [Videos generated by GoesAnimator or GoesSceneEditor]
+    └── Big_Horn_WY                     
+        ├── Big_Horn_Overlay
+        │   └── video.avi
+        ├── Big_Horn_WY_Edit1
+        │   └── video.avi
+        └── video.avi
 
 ```
-base_dir
-|
-|---goesdata [contains NC data files]
-|
-|---Images [contains composited images]
-|  |
-|  |---Image subfolder #1 (random or user-provided)
-|  |  |
-|  |  |---image1.png
-|  |  |---image2.png
-|  |  |---...
-|  |  |---metadata.json
-|  |  |---timestamps.csv      
-|  |
-|  |---Image subfolder #2 (random or user-provided)
-|  |  |
-|  |  |---image1.png
-|  |  |---image2.png
-|  |  |---...
-|  |  |---metadata.json
-|  |  |---timestamps.csv
-|  |
-|  |--- ...
-|  
-|---Videos [contains videos]
-   |
-   |---Video subfolder #1 (same name as Image subfolder)
-   |  |
-   |  |---video.mp4
-   |
-   |---Video subfolder #2 (same name as Image subfolder)
-   |  |
-   |  |---video.mp4
-   |
-   |---...
-```
-To ensure proper functioning of this package, this folder structure
-should not be modified. Also, the `metadata.json` and `timestamps.csv` files
-added to each image subfolder should not be deleted or moved.
+The subfolders under `Scenes` each contain two files, `metadata.json` and `timestamps.csv`, that are automatically generated during 
+compositing. For proper functioning of the package, these files should not be altered. In fact, there should be no reason 
+for the user to need to directly alter anything located under the `Scenes` folder.
 
-For additional information, please see the docstrings in the source code.
+There is one additional file needed for the package to function correctly `etc/abibands.yaml`, which is intended to mirror`abi.yaml`
+found in the Satpy package. This file may need to be manually updated if custom compositors are added to `abi.yaml` 
