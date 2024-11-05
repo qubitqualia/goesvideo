@@ -104,17 +104,22 @@ def test_preview():
     img = ga.preview(
         use_image_file=tmpimgfile.name, **kwargs, res=(1024, 768), display=False
     )
-    os.unlink(tmpimgfile.name)
 
     assert isinstance(img, Image.Image)
 
     if show_image:
         img.show()
 
+    img.close()
+
     # Cleanup
     try:
+        tmpimgfile.close()
+        os.unlink(tmpimgfile.name)
         shutil.rmtree(base_dir)
     except FileNotFoundError:
+        pass
+    except PermissionError:
         pass
 
     return

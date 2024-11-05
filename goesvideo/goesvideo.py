@@ -1295,7 +1295,7 @@ class GoesCompositor(GoesBase):
                             tmpfile = tempfile.NamedTemporaryFile(
                                 "w+b", suffix=".tif", delete=False
                             )
-
+                            tmpfile.close()
                             _tifout = tmpfile.name
                             new_scene.save_dataset(
                                 scenename,
@@ -1325,7 +1325,10 @@ class GoesCompositor(GoesBase):
                                 f.seek(0)
                                 json.dump(_dict, f, indent=4)
 
-                            os.unlink(_tifout)
+                            try:
+                                os.unlink(_tifout)
+                            except PermissionError:
+                                pass
 
                         counter += 1
                         svname += ".png"
@@ -1599,7 +1602,10 @@ class GoesAnimator(GoesBase):
                         for file in tmpdirpath.iterdir():
                             if file.is_file():
                                 shutil.copyfile(str(file), self.tmpimgpath / file.name)
-                                os.unlink(str(file))
+                                try:
+                                    os.unlink(str(file))
+                                except PermissionError:
+                                    pass
                         os.rmdir(tmpdirpath)
                         imgname = list(self.tmpimgpath.glob("*.png"))[0]
 

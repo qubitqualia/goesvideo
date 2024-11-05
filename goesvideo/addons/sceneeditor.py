@@ -219,7 +219,7 @@ class GoesSceneEditor:
             if preview:
                 break
             else:
-                os.rename(outfile, str(self.output_path / f))
+                os.replace(outfile, str(self.output_path / f))
 
         if gdict:
             geodata.update(gdict)
@@ -358,7 +358,7 @@ class GoesSceneEditor:
             if preview:
                 break
             else:
-                os.rename(outfile, str(self.output_path / f))
+                os.replace(outfile, str(self.output_path / f))
 
         if gdict:
             geodata.update(gdict)
@@ -698,6 +698,7 @@ class GoesSceneEditor:
                             _tmpfile = tempfile.NamedTemporaryFile(
                                 "w+b", suffix=".png", delete=False
                             )
+                            _tmpfile.close()
                             _outfile = _tmpfile.name
                             newimg = Image.open(infile)
                         else:
@@ -710,7 +711,7 @@ class GoesSceneEditor:
             if preview:
                 break
             else:
-                os.rename(_outfile, outfile)
+                os.replace(_outfile, outfile)
 
         if preview:
             self._finalize_preview(_outfile)
@@ -898,7 +899,6 @@ class GoesSceneEditor:
                     )
 
             olimg = Image.open(olpath)
-            os.unlink(olpath)
 
             if counter == 0 and cumulative:
                 cumulative_img = olimg
@@ -917,7 +917,11 @@ class GoesSceneEditor:
                 compimg.save(str(olfolder / self.img_filenames[idx]))
             counter += 1
             print(f"{Fore.GREEN}Overlays complete! Images saved to {str(olfolder)}.")
-
+            olimg.close()
+            try:
+                os.unlink(olpath)
+            except PermissionError:
+                pass
         return
 
     def to_video(self, codec="mpeg4", fps=20):
@@ -1065,10 +1069,14 @@ class GoesSceneEditor:
             os.unlink(self.geodata["preview"]["tif_cache"])
         except FileNotFoundError:
             pass
+        except PermissionError:
+            pass
 
     def _create_tmp_files(self):
         tmpfile1 = tempfile.NamedTemporaryFile("w+b", suffix=".png", delete=False)
         tmpfile2 = tempfile.NamedTemporaryFile("w+b", suffix=".tif", delete=False)
+        tmpfile1.close()
+        tmpfile2.close()
         self.geodata["preview"]["png_cache"] = tmpfile1.name
         self.geodata["preview"]["tif_cache"] = tmpfile2.name
 

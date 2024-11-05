@@ -135,6 +135,6 @@ def test_generic_overlays():
             if pngfile:
                 Image.open(pngfile[0]).show()
             if tiffile:
-                os.rename(tiffile[0], str(tiffile[0]).split(".")[0] + ".tiff")
+                os.replace(tiffile[0], str(tiffile[0]).split(".")[0] + ".tiff")
                 tf = list((outputpath / sp).glob("*.tiff"))
                 Image.open(tf[0]).show()

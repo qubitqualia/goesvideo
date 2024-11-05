@@ -4,9 +4,9 @@ from goesvideo.utils import gistools
 
 """
 This demo creates a video clip of the Hawaiian Islands region using data from GOES-West
-The compositor selected for this video is 'true_color_with_night_ir_custom', which is a custom compositor defined
-in both etc/abibands.yaml found in the goesvideo package and the satpy config file etc/composites/abi.yaml. The user
-can change this to another compositor such as 'true_color' or 'true_color_with_night_ir' which are included as standard
+The compositor selected for this video is 'true_color_with_night_ir', which is a standard compositor defined in
+the Satpy file etc/composites/abi.yaml and is also included in the GoesVideo file etc/abibands.yaml. If custom 
+compositors are defined by the user in Satpy, the user should be sure to also update etc/abibands.yaml.
 options in abi.yaml.
 """
 
@@ -35,13 +35,13 @@ coastopts = {'level_coast': 1, 'level_borders': 2}
 animator.compositor.set_coastlines_options(path=coastpath, **coastopts)
 
 # Create video
-animator.create_video('true_color_with_night_ir_custom',
+animator.create_video('true_color_with_night_ir',
                       start_time='2024-10-12 17:00:00',   #Supplied as UTC time
                       end_time='2024-10-12 23:00:00',     #Supplied as UTC time
                       bbox=bbox,
                       folder_name='Hawaii_Sample_Scene',
                       interval=1,
-                      timestamps=True,
+                      timestamps=False,
                       coastlines=True,
                       res='auto',
                       codec='rawvideo',

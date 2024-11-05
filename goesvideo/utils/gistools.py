@@ -301,7 +301,7 @@ def image_to_geotiff(img, geodata, outfile=None):
             dst.write_band(band, src)
 
     if outfile:
-        os.rename(_file, outfile)
+        os.replace(_file, outfile)
         return outfile
     else:
         return _file
@@ -325,6 +325,7 @@ def geotiff_to_image(srctif, outfile=None):
 
     tmpfile = tempfile.NamedTemporaryFile("w+b", suffix=".png", delete=False)
     _file = tmpfile.name
+    tmpfile.close()
 
     with rasterio.open(
         _file,
@@ -345,7 +346,10 @@ def geotiff_to_image(srctif, outfile=None):
     if outfile:
         img.save(outfile)
 
-    os.unlink(_file)
+    try:
+        os.unlink(_file)
+    except PermissionError:
+        pass
 
     return img
 
@@ -405,9 +409,11 @@ def resize(srcpath, width, height, geodata=None, resample=None, outfile=None):
     # Create tempfiles for writing
     tmpfile = tempfile.NamedTemporaryFile("w+b", suffix=".tif", delete=False)
     _file = tmpfile.name
+    tmpfile.close()
 
     tmpfile2 = tempfile.NamedTemporaryFile("w+b", suffix=".tif", delete=False)
     _file2 = tmpfile2.name
+    tmpfile2.close()
 
     while True:
         if is_gtiff or converted:
@@ -451,8 +457,10 @@ def resize(srcpath, width, height, geodata=None, resample=None, outfile=None):
                         ]
                     }
                 )
-
-            os.unlink(_file)
+            try:
+                os.unlink(_file)
+            except PermissionError:
+                pass
             break
         else:
             _path = image_to_geotiff(_path, geodata_copy)
@@ -461,20 +469,27 @@ def resize(srcpath, width, height, geodata=None, resample=None, outfile=None):
     if not is_gtiff:
         if outfile:
             geotiff_to_image(_file2, outfile)
-            os.unlink(_file2)
-            os.unlink(_path)
+            try:
+                os.unlink(_file2)
+                os.unlink(_path)
+            except PermissionError:
+                pass
             retpath = outfile
         else:
             outfilepath = tempfile.NamedTemporaryFile(
                 "w+b", suffix=".png", delete=False
             )
+            outfilepath.close()
             retpath = outfilepath.name
             geotiff_to_image(_file2, retpath)
-            os.unlink(_file2)
-            os.unlink(_path)
+            try:
+                os.unlink(_file2)
+                os.unlink(_path)
+            except PermissionError:
+                pass
     else:
         if outfile:
-            os.rename(_file2, outfile)
+            os.replace(_file2, outfile)
             retpath = outfile
         else:
             retpath = _file2
@@ -628,10 +643,14 @@ def reproject(srcpath, out_crs="EPSG:4326", geodata=None, outfile=None):
             _path = image_to_geotiff(_path, geodata_copy)
             converted = True
 
+    tmpgtifffile.close()
     if not is_gtiff:
         if outfile:
             geotiff_to_image(src2_path, outfile=outfile)
-            os.unlink(src2_path)
+            try:
+                os.unlink(src2_path)
+            except PermissionError:
+                pass
             retpath = outfile
         else:
             img = geotiff_to_image(src2_path)
@@ -639,17 +658,23 @@ def reproject(srcpath, out_crs="EPSG:4326", geodata=None, outfile=None):
             imgfile = tmpimgfile.name
             img.save(imgfile)
             img.close()
-            os.unlink(src2_path)
+            try:
+                os.unlink(src2_path)
+            except PermissionError:
+                pass
             retpath = imgfile
     else:
         if outfile:
-            os.rename(src2_path, outfile)
+            os.replace(src2_path, outfile)
             retpath = outfile
         else:
             retpath = src2_path
 
     if converted:
-        os.unlink(_path)
+        try:
+            os.unlink(_path)
+        except PermissionError:
+            pass
 
     if not is_gtiff:
         return retpath, geodata_copy
@@ -756,10 +781,14 @@ def crop(srcpath, new_bbox, geodata=None, outfile=None):
             _path = image_to_geotiff(_path, geodata_copy)
             converted = True
 
+    tmpfile.close()
     if not is_gtiff:
         if outfile:
             geotiff_to_image(gtiff_file, outfile=outfile)
-            os.unlink(gtiff_file)
+            try:
+                os.unlink(gtiff_file)
+            except PermissionError:
+                pass
             retpath = outfile
         else:
             img = geotiff_to_image(gtiff_file)
@@ -767,17 +796,23 @@ def crop(srcpath, new_bbox, geodata=None, outfile=None):
             imgfile = tmpimgfile.name
             img.save(imgfile)
             img.close()
-            os.unlink(gtiff_file)
+            try:
+                os.unlink(gtiff_file)
+            except PermissionError:
+                pass
             retpath = imgfile
     else:
         if outfile:
-            os.rename(gtiff_file, outfile)
+            os.replace(gtiff_file, outfile)
             retpath = outfile
         else:
             retpath = gtiff_file
 
     if converted:
-        os.unlink(_path)
+        try:
+            os.unlink(_path)
+        except PermissionError:
+            pass
 
     if not is_gtiff:
         return retpath, geodata_copy
@@ -821,9 +856,13 @@ def adjust_alpha(srcpath, alpha, outfile=None):
             img = geotiff_to_image(_path)
             converted = True
 
+    tmpfile.close()
     if outfile:
-        os.rename(png_file, outfile)
-        os.unlink(png_file)
+        os.replace(png_file, outfile)
+        try:
+            os.unlink(png_file)
+        except PermissionError:
+            pass
         retpath = outfile
     else:
         retpath = png_file
@@ -1018,5 +1057,5 @@ def replace_file_timezone(file, in_tz, out_tz, out_abbr):
     else:
         fname = svpath / newtstr
 
-    os.rename(file, fname)
+    os.replace(file, fname)
     return
